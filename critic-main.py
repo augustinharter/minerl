@@ -20,11 +20,12 @@ import logging as L
 
 class Handler():
     def __init__(self, args):
-        #os.environ["MINERL_DATA_ROOT"] = "/home/augo/uni/minerl/data"
+        #os.environ["MINERL_DATA_ROOT"] = "data"
         #self.data = minerl.data.make('MineRLTreechopVectorObf-v0')
         self.args = args
         self.device = "cuda" if T.cuda.is_available() else "cpu"
-        self.AE = Critic
+        print("device:", self.device)
+        self.critic = Critic().to(self.device)
         self.models = dict()
         self.models["auto-encoder"] = self.AE
         self.arg_path = f"default/"
@@ -54,9 +55,7 @@ class Handler():
         with open(data_path+file_name, "rb") as fp:
             self.X, self.Y = pickle.load(fp)
         self.dataloader = T.utils.data.DataLoader(T.utils.data.TensorDataset(T.from_numpy(self.X), T.from_numpy(self.Y)), batch_size=32, shuffle=True)
-        print(f"loaded train set with {len(self.data)}")
-
-        self.tiles_per_frame = len(self.data[0])
+        print(f"loaded train set with {len(self.X)}")
 
         # TEST data
         with open(data_path+"test-"+file_name, "rb") as fp:
@@ -77,7 +76,6 @@ class Handler():
             T.save(self.models[model].state_dict(), save_path+f'/{model}.pt')
 
     def forward(self, mode="train"):
-        data = self.data
         args = self.args
         testf = mode=="test"
         trainf = mode=="train"
@@ -94,11 +92,14 @@ class Handler():
         # Epoch and Batch Loops
         for epoch in range(int(testf) or self.args.epochs):
             for b_idx, (X,Y) in enumerate(loader):
-
                 # FORWARD PASS---------------------------
                 if testf: # Stop early if testing
                     if b_idx>=10:
                         break
+
+                X = X.to(self.device)
+                Y = Y.to(self.device)
+                print(Y)
 
                 pred = critic(X)
                 if trainf:
@@ -123,12 +124,13 @@ class Handler():
         log_file.close()
 
     def collect_dataset(self, path, size=2000, cons=50):
-        os.environ["MINERL_DATA_ROOT"] = "/home/augo/uni/minerl/data"
-        data = minerl.data.make('MineRLTreechopVectorObf-v0', num_workers=1, worker_batch_size=1)
+        os.environ["MINERL_DATA_ROOT"] = "./data"
+        #minerl.data.download("./data", experiment='MineRLTreechopVectorObf-v0')
+        data = minerl.data.make('MineRLTreechopVectorObf-v0')
         X = []
         Y = []
         print("collecting data set with", size, "frames")
-        for b_idx, (state, act, rew, next_state, done) in enumerate(data.batch_iter(10,100, num_epochs=1, preload_buffer_size=1)):
+        for b_idx, (state, act, rew, next_state, done) in enumerate(data.batch_iter(10,100, num_epochs=1)):
             print("at batch", b_idx, end='\r')
             #vector = state['vector']
 
@@ -146,13 +148,13 @@ class Handler():
             rewards = []
             for row, frame in chops:
                 #approaches.append(pov[row,frame-wait-stepsize*cons : frame-wait : stepsize]) # take 30 frames from 50 frames before chop
-                approaches.append(pov[row, 0: frame-wait : stepsize])
+                approaches.extend(pov[row, 0: frame-wait : stepsize])
                 rawrew = rew[row, 0: frame-wait : stepsize]
                 fak = 1
                 for i in range(1, len(rawrew)+1):
                     rawrew[-i] = fak
                     fak *= gamma
-                rewards.append(rawrew)
+                rewards.extend(rawrew)
             
             #print(approaches)
             if approaches:

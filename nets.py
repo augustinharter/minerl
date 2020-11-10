@@ -119,7 +119,7 @@ class VAE(nn.Module):
         return T.sigmoid(res.detach()), mean.detach()
 
 class Critic(nn.Module):
-    def __init__(self, width, enc_dim, colorchs, activation=nn.ReLU):
+    def __init__(self, width=64, enc_dim=1, colorchs=3, activation=nn.ReLU):
         super().__init__()
         self.width = width
         self.enc = nn.Sequential(
