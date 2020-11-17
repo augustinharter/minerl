@@ -44,7 +44,7 @@ class Handler():
         wait = self.args.wait
         test_size = 300
         data_size = self.args.datasize
-        data_path = f"data/reward-frames/tree-chop/{self.args.color}-ds{data_size}-w{wait}-g{self.args.gamma}rg{self.args.revgamma}/"
+        data_path = f"data/reward-frames/tree-chop/{self.args.color}-ds{data_size}-w{wait}-g{self.args.gamma}-rg{self.args.revgamma}/"
         file_name = "data.pickle"
 
         print("loading data:", data_path)
@@ -106,7 +106,7 @@ class Handler():
                         break
 
                 XP = X.permute(0,3,1,2).float().to(self.device)
-                Y = Y.float().to(self.device)
+                Y = Y[:,args.rewidx].float().to(self.device)
                 #print(X.shape, Y.shape, Y)
 
                 pred = critic(XP).squeeze()
@@ -161,7 +161,7 @@ class Handler():
         Y = []
 
         print("collecting data set with", size, "frames")
-        for b_idx, (state, act, rew, next_state, done) in enumerate(data.batch_iter(10,cons, )):
+        for b_idx, (state, act, rew, next_state, done) in enumerate(data.batch_iter(10,cons)):
             print("at batch", b_idx, end='\r')
             #vector = state['vector']
 
@@ -272,6 +272,7 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--saveevery", type=int, default=5)
     parser.add_argument("--clusters", type=int, default=3)
+    parser.add_argument("--rewidx", type=int, default=3)
     parser.add_argument("--wait", type=int, default=10)
     parser.add_argument("--gamma", type=float, default=0.95)
     parser.add_argument("--revgamma", type=float, default=1.1)
