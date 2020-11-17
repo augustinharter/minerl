@@ -135,9 +135,8 @@ class Critic(nn.Module):
             nn.Conv2d(8,16,3,1,1),
             activation(),
             nn.MaxPool2d(2),
-            nn.Conv2d(16,1,4),
-            nn.Sigmoid()
-        )
+            nn.Conv2d(16,1,4)
+            )
 
     def forward(self, X):
         return self.enc(X)
