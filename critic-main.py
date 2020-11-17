@@ -36,7 +36,7 @@ class Handler():
         print("viz path:", self.result_path)
         self.save_path = f"./saves/Critic/"+self.arg_path
 
-        self.font = ImageFont.truetype("/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf", 10)
+        self.font = ImageFont.truetype("/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf", 9)
         
         L.basicConfig(filename=f'logs/{args.name}.log', format='%(asctime)s %(levelname)s %(name)s %(message)s', level=L.INFO)
 
@@ -44,7 +44,7 @@ class Handler():
         wait = self.args.wait
         test_size = 300
         data_size = self.args.datasize
-        data_path = f"data/reward-frames/tree-chop/{self.args.color}-ds{data_size}-w{wait}-g{self.args.gamma}/"
+        data_path = f"data/reward-frames/tree-chop/{self.args.color}-ds{data_size}-w{wait}-g{self.args.gamma}rg{self.args.revgamma}/"
         file_name = "data.pickle"
 
         print("loading data:", data_path)
@@ -161,7 +161,7 @@ class Handler():
         Y = []
 
         print("collecting data set with", size, "frames")
-        for b_idx, (state, act, rew, next_state, done) in enumerate(data.batch_iter(10,cons)):
+        for b_idx, (state, act, rew, next_state, done) in enumerate(data.batch_iter(10,cons, )):
             print("at batch", b_idx, end='\r')
             #vector = state['vector']
 
@@ -215,10 +215,10 @@ class Handler():
                     rowrew.append(rewtuple)
 
                     if len(X)<200: # SAVE IMG
-                        img = Image.fromarray(np.uint8(255*hsv_to_rgb(sequ[-i])))
+                        img = Image.fromarray(np.uint8(255*hsv_to_rgb(sequ[-i]/255)))
                         draw = ImageDraw.Draw(img)
                         x, y = 0, 0
-                        draw.text((x, y), "\n".join([str(entry) for entry in rewtuple]), fill= (255,255,255), font=self.font)
+                        draw.text((x, y), "\n".join([str(round(entry,3)) for entry in rewtuple]), fill= (255,255,255), font=self.font)
                         img.save(datadir+f"{b_idx}-{ri}-{i}.png")
 
 
@@ -226,8 +226,8 @@ class Handler():
                     fak *= gamma
                     sub -= 1
                     addfak *= gamma
-                    revfak -= revhelper
-                    revaddfak -= revhelper
+                    revfak = max(revfak-revhelper, 0)
+                    revaddfak = max(revaddfak-revhelper, 0)
                     revhelper *= revgamma
 
                 #print(row)
