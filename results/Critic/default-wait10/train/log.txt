@@ -1,0 +1,2 @@
+Namespace(clusters=3, color='HSV', datasize=1001, epochs=0, gamma=0.95, gray=True, load=False, name='default', saveevery=5, test=True, train=True, wait=10)
+

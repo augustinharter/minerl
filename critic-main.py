@@ -16,6 +16,8 @@ import io
 import cv2
 from sklearn.cluster import KMeans
 import logging as L
+import gzip
+from PIL import Image, ImageDraw, ImageFont
 
 
 class Handler():
@@ -27,40 +29,46 @@ class Handler():
         print("device:", self.device)
         self.critic = Critic().to(self.device)
         self.models = dict()
-        self.models["auto-encoder"] = self.AE
-        self.arg_path = f"default/"
+        self.models["auto-encoder"] = self.critic
+        self.arg_path = f"wait{args.wait}/"
         print("model path:", self.arg_path)
         self.result_path = f"./results/Critic/"+ args.name+ "-"+ self.arg_path
         print("viz path:", self.result_path)
         self.save_path = f"./saves/Critic/"+self.arg_path
 
-    def load_data(self, data_size = 10000, batch_size = 8):
-        data_path = f"data/tiles/tree-chop/default/"
+        self.font = ImageFont.truetype("/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf", 10)
+        
+        L.basicConfig(filename=f'logs/{args.name}.log', format='%(asctime)s %(levelname)s %(name)s %(message)s', level=L.INFO)
+
+    def load_data(self, batch_size = 32):
+        wait = self.args.wait
+        test_size = 300
+        data_size = self.args.datasize
+        data_path = f"data/reward-frames/tree-chop/{self.args.color}-ds{data_size}-w{wait}-g{self.args.gamma}/"
         file_name = "data.pickle"
-        test_size = 1000
 
         print("loading data:", data_path)
         # TRAIN
         if not os.path.exists(data_path+file_name):
             print("train set...")
             os.makedirs(data_path, exist_ok=True)
-            self.collect_dataset(data_path+file_name, size=data_size)
+            self.collect_dataset(data_path+file_name, size=data_size, wait=wait, datadir=data_path)
         # TEST
         if not os.path.exists(data_path+"test-"+file_name):
             print("collecting test set...")
             os.makedirs(data_path, exist_ok=True)
-            self.collect_dataset(data_path+"test-"+file_name, size=test_size)
+            self.collect_dataset(data_path+"test-"+file_name, size=test_size, wait=wait, datadir=data_path)
 
         # TRAIN data
-        with open(data_path+file_name, "rb") as fp:
+        with gzip.open(data_path+file_name, "rb") as fp:
             self.X, self.Y = pickle.load(fp)
-        self.dataloader = T.utils.data.DataLoader(T.utils.data.TensorDataset(T.from_numpy(self.X), T.from_numpy(self.Y)), batch_size=32, shuffle=True)
+        self.dataloader = T.utils.data.DataLoader(T.utils.data.TensorDataset(T.from_numpy(self.X), T.from_numpy(self.Y)), batch_size=batch_size, shuffle=True)
         print(f"loaded train set with {len(self.X)}")
 
         # TEST data
-        with open(data_path+"test-"+file_name, "rb") as fp:
+        with gzip.open(data_path+"test-"+file_name, "rb") as fp:
             self.XX, self.YY = pickle.load(fp)
-        self.testdataloader = T.utils.data.DataLoader(T.utils.data.TensorDataset(T.from_numpy(self.XX), T.from_numpy(self.YY)), batch_size=32, shuffle=False)
+        self.testdataloader = T.utils.data.DataLoader(T.utils.data.TensorDataset(T.from_numpy(self.XX), T.from_numpy(self.YY)), batch_size=batch_size, shuffle=False)
         print(f"loaded test set with {len(self.XX)}")
 
     def load_models(self):
@@ -97,21 +105,44 @@ class Handler():
                     if b_idx>=10:
                         break
 
-                X = X.to(self.device)
-                Y = Y.to(self.device)
-                print(Y)
+                XP = X.permute(0,3,1,2).float().to(self.device)
+                Y = Y.float().to(self.device)
+                #print(X.shape, Y.shape, Y)
 
-                pred = critic(X)
+                pred = critic(XP).squeeze()
                 if trainf:
-                    loss = F.mse_loss(pred, y)
+                    loss = F.mse_loss(pred, Y)
                 
-
-                print(log_msg, end="\r")
-                log_file.write(log_msg+"\n")
+                if trainf:
+                    print(loss.item(), end="\r")
+                #log_file.write(log_msg+"\n")
 
                 # VIZ -----------------------------------
                 if (trainf and not b_idx%100) or testf: # VISUALIZE
-                    plt.imsave(result_path+f"e{epoch}_b{b_idx}.png", diff)
+                    if trainf:
+                        L.info(f"e{epoch} b{b_idx} loss: {loss.item()}")
+                        order1 = pred.argsort(descending=True)
+                        order2 = Y.argsort(descending=True)
+                    if testf:
+                        order1 = np.arange(Y.shape[0])
+                        order2 = np.arange(Y.shape[0])
+                    viz = hsv_to_rgb(X[order1].numpy()/255) if self.args.color == "HSV" else X[order].numpy()/255
+                    viz = np.concatenate(viz, axis=1)
+                    viz2 = hsv_to_rgb(X[order2].numpy()/255) if self.args.color == "HSV" else X[order].numpy()/255
+                    viz2 = np.concatenate(viz2, axis=1)
+
+                    viz = np.concatenate((viz,viz2), axis=0)
+                    img = Image.fromarray(np.uint8(255*viz))
+                    draw = ImageDraw.Draw(img)
+                    for i, value in enumerate(pred[order1].tolist()):
+                        x, y = int(i*img.width/len(pred)), 1
+                        draw.text((x, y), str(round(value,3)), fill= (255,255,255), font=self.font)
+                    for i, value in enumerate(Y[order2].tolist()):
+                        x, y = int(i*img.width/len(Y)), int(1+img.height/2)
+                        draw.text((x, y), str(round(value, 3)), fill=(255,255,255), font=self.font)
+
+                    #plt.imsave(result_path+f"e{epoch}_b{b_idx}.png", viz)
+                    img.save(result_path+f"e{epoch}_b{b_idx}.png")
             
             if epoch and not epoch%args.saveevery:
                 self.save_models()
@@ -121,56 +152,103 @@ class Handler():
                 pass
  
         print()
-        log_file.close()
 
-    def collect_dataset(self, path, size=2000, cons=50):
+    def collect_dataset(self, path, size=2000, cons=150, wait=10, datadir="./results/stuff/"):
         os.environ["MINERL_DATA_ROOT"] = "./data"
         #minerl.data.download("./data", experiment='MineRLTreechopVectorObf-v0')
         data = minerl.data.make('MineRLTreechopVectorObf-v0')
         X = []
         Y = []
+
         print("collecting data set with", size, "frames")
-        for b_idx, (state, act, rew, next_state, done) in enumerate(data.batch_iter(10,100, num_epochs=1)):
+        for b_idx, (state, act, rew, next_state, done) in enumerate(data.batch_iter(10,cons)):
             print("at batch", b_idx, end='\r')
             #vector = state['vector']
 
             # CONVERt COLOR
-            pov = state['pov']/255
+            pov = state['pov']
             if self.args.color == "HSV":
-                pov = rgb_to_hsv(pov)
+                pov = (255*rgb_to_hsv(pov/255)).astype(np.uint8)
 
-            gamma = 0.9
+            gamma = self.args.gamma
+            revgamma = self.args.revgamma
             stepsize = 2
-            wait = 5
             #chops = [(i,pos) for (i,pos) in enumerate(np.argmax(rew, axis=1)) if pos>wait+stepsize*cons]
-            chops = [(i,pos) for (i,pos) in enumerate(np.argmax(rew, axis=1)) if pos>wait]
+            #chops = [(i,pos) for (i,pos) in enumerate(np.argmax(rew, axis=1)) if pos>wait and pos <cons]
             approaches = []
             rewards = []
-            for row, frame in chops:
-                #approaches.append(pov[row,frame-wait-stepsize*cons : frame-wait : stepsize]) # take 30 frames from 50 frames before chop
-                approaches.extend(pov[row, 0: frame-wait : stepsize])
-                rawrew = rew[row, 0: frame-wait : stepsize]
-                fak = 1
-                for i in range(1, len(rawrew)+1):
-                    rawrew[-i] = fak
+            #rewimg = pov[rew==1][0]
+            #print(rewimg.shape)
+            #plt.imsave(f"./results/Critic/stuff/rewimg-{b_idx}.png", hsv_to_rgb(revimg/255))
+            for ri,orow in enumerate(rew):
+                chops = np.nonzero(orow)[0]
+                #print(chops, row)
+                if chops.size ==0:
+                    continue
+                end = np.max(chops)
+                sequ = pov[ri,:end+1]
+                orow = orow[:end+1]
+                assert orow[-1]>0, "ERROR wrong chop detection"
+
+                waitcount = wait
+                rowrew = []
+                selection = []
+                addfak = 0
+                revaddfak = 0
+                for i in range(1, len(orow)+1):
+                    waitcount -= 1
+
+                    if orow[-i]>0: # RESET
+                        fak = 1 #exponential
+                        sub = 0 #subtraction
+                        addfak += 1 #exponanential with add-reset
+                        revfak = 1
+                        revaddfak += 1
+                        revhelper = 0.01
+                        #fak = 0
+                        waitcount = wait
+                    if waitcount>0:
+                        continue
+
+                    selection.append(-i)
+                    rewtuple = (fak, addfak, revfak, revaddfak, sub)
+                    rowrew.append(rewtuple)
+
+                    if len(X)<200: # SAVE IMG
+                        img = Image.fromarray(np.uint8(255*hsv_to_rgb(sequ[-i])))
+                        draw = ImageDraw.Draw(img)
+                        x, y = 0, 0
+                        draw.text((x, y), "\n".join([str(entry) for entry in rewtuple]), fill= (255,255,255), font=self.font)
+                        img.save(datadir+f"{b_idx}-{ri}-{i}.png")
+
+
+                    # DISCOUNT 
                     fak *= gamma
-                rewards.extend(rawrew)
+                    sub -= 1
+                    addfak *= gamma
+                    revfak -= revhelper
+                    revaddfak -= revhelper
+                    revhelper *= revgamma
+
+                #print(row)
+                rewards.extend(rowrew)
+                approaches.extend(sequ[selection])
             
             #print(approaches)
             if approaches:
                 X.extend(approaches)
                 Y.extend(rewards)
 
-            print(len(X))
+            #print(len(X))
 
             if len(X) >= size:
                 X = X[:size]
                 Y = Y[:size]
                 break
 
-        X = np.array(X)
+        X = np.array(X, dtype=np.uint8)
         Y = np.array(Y)
-        with open(path, "wb") as fp:
+        with gzip.GzipFile(path, 'wb') as fp:
             pickle.dump((X, Y), fp)
 
     def get_arr_from_fig(self, fig, dpi=180):
@@ -189,10 +267,15 @@ if __name__ == "__main__":
     parser.add_argument("-train", action="store_true")
     parser.add_argument("-test", action="store_true")
     parser.add_argument("-load", action="store_true")
+    #parser.add_argument("-vizdataset", action="store_true")
     parser.add_argument("--gray", type=bool, default=True)
-    parser.add_argument("--epochs", type=int, default=3)
+    parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--saveevery", type=int, default=5)
     parser.add_argument("--clusters", type=int, default=3)
+    parser.add_argument("--wait", type=int, default=10)
+    parser.add_argument("--gamma", type=float, default=0.95)
+    parser.add_argument("--revgamma", type=float, default=1.1)
+    parser.add_argument("--datasize", type=int, default=1000)
     parser.add_argument("--color", type=str, default="HSV")
     parser.add_argument("--name", type=str, default="default")
     args = parser.parse_args()
@@ -200,15 +283,18 @@ if __name__ == "__main__":
 
     H = Handler(args)
     H.load_data()
-
-    if args.load:
-        H.load_models()
-    if args.train:
-        H.forward(mode="train")
-        H.save_models()
-    if args.test:
-        if not args.train:
+    try:
+        if args.load:
             H.load_models()
-        H.forward(mode="test")
-    
+        if args.train:
+            H.forward(mode="train")
+            H.save_models()
+        if args.test:
+            if not args.train:
+                H.load_models()
+            H.forward(mode="test")
+
+    except Exception:
+        L.exception("Exception occured:")
+        print("EXCEPTION")
     exit(0)
