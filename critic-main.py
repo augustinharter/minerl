@@ -42,17 +42,17 @@ class Handler():
 
     def load_data(self, batch_size = 32):
         wait = self.args.wait
-        test_size = 300
+        test_size = 600
         data_size = self.args.datasize
-        data_path = f"data/split/tree-chop/{self.args.color}-ds{data_size}-w{wait}-g{self.args.gamma}-rg{self.args.revgamma}-cons{self.args.cons}/"
+        data_path = f"data/split/tree-chop/{self.args.color}-ds{data_size}-wait{wait}-delay{self.args.delay}-warm{self.args.warmup}-g{self.args.gamma}-rg{self.args.revgamma}-cons{self.args.cons}/"
         file_name = "data.pickle"
 
         print("loading data:", data_path)
         # TRAIN
-        if not os.path.exists(data_path+file_name):
-            print("train set...")
-            os.makedirs(data_path, exist_ok=True)
-            self.collect_dataset(data_path+file_name, size=data_size, wait=wait, datadir=data_path)
+        #if not os.path.exists(data_path+file_name):
+        #    print("train set...")
+        #    os.makedirs(data_path, exist_ok=True)
+        #    self.collect_dataset(data_path+file_name, size=data_size, wait=wait, datadir=data_path)
         # TEST
         if not os.path.exists(data_path+"test-"+file_name):
             print("collecting test set...")
@@ -60,10 +60,10 @@ class Handler():
             self.collect_dataset(data_path+"test-"+file_name, size=test_size, wait=wait, datadir=data_path)
 
         # TRAIN data
-        with gzip.open(data_path+file_name, "rb") as fp:
+        #with gzip.open(data_path+file_name, "rb") as fp:
             self.X, self.Y = pickle.load(fp)
-        self.dataloader = T.utils.data.DataLoader(T.utils.data.TensorDataset(T.from_numpy(self.X), T.from_numpy(self.Y)), batch_size=batch_size, shuffle=True)
-        print(f"loaded train set with {len(self.X)}")
+        #self.dataloader = T.utils.data.DataLoader(T.utils.data.TensorDataset(T.from_numpy(self.X), T.from_numpy(self.Y)), batch_size=batch_size, shuffle=True)
+        #print(f"loaded train set with {len(self.X)}")
 
         # TEST data
         with gzip.open(data_path+"test-"+file_name, "rb") as fp:
@@ -161,10 +161,12 @@ class Handler():
         Y = []
         cons = self.args.cons
         wait = self.args.wait
-        chunksize = 20
+        delay = self.args.delay
+        warmup = self.args.warmup
+        chunksize = self.args.chunksize
 
         print("collecting data set with", size, "frames")
-        for b_idx, (state, act, rew, next_state, done) in enumerate(data.batch_iter(10,cons, preload_buffer_size=1)):
+        for b_idx, (state, act, rew, next_state, done) in enumerate(data.batch_iter(10,2*wait, preload_buffer_size=1)):
             print("at batch", b_idx, end='\r')
             #vector = state['vector']
 
@@ -175,20 +177,23 @@ class Handler():
 
             rewards = []
             approaches = []
-            chops = [(i,pos) for (i,pos) in enumerate(np.argmax(rew, axis=1)) if pos>wait]
+            chops = [(i,pos) for (i,pos) in enumerate(np.argmax(rew>0, axis=1)) if pos>wait]
+            print(np.max(rew, axis=1))
+            print(chops)
             for chopidx,(rowidx, tidx) in enumerate(chops):
                 rewards.extend([0]*chunksize)
-                approaches.extend(pov[rowidx,:chunksize])
+                approaches.extend(pov[rowidx,warmup:warmup+chunksize])
                 rewards.extend([1]*chunksize)
-                approaches.extend(pov[rowidx,tidx-chunksize+1:tidx+1])
+                approaches.extend(pov[rowidx,tidx-chunksize+1-delay:tidx+1-delay])
                 
-                for chidx in range(2*chunksize):
-                    if path.__contains__("test") and len(X)<200: # SAVE IMG
-                        img = Image.fromarray(np.uint8(255*hsv_to_rgb(approaches[chopidx*chunksize*2+chidx]/255)))
+                effchsize = chunksize*2
+                for chunkidx in range(effchsize):
+                    if path.__contains__("test") and len(X)<500: # SAVE IMG
+                        img = Image.fromarray(np.uint8(255*hsv_to_rgb(approaches[chopidx*effchsize+chunkidx]/255)))
                         #draw = ImageDraw.Draw(img)
                         #x, y = 0, 0
                         #draw.text((x, y), "\n".join([str(round(entry,3)) for entry in rewtuple]), fill= (255,255,255), font=self.font)
-                        img.save(datadir+f"{b_idx}-{rowidx}-{chidx}-{'A' if rewards[chopidx*chunksize*2+chidx] else 'B'}.png")
+                        img.save(datadir+f"{b_idx}-{chopidx}-{chunkidx}-{'A' if rewards[chopidx*effchsize+chunkidx] else 'B'}.png")
                             
             if approaches:
                 X.extend(approaches)
@@ -326,6 +331,8 @@ if __name__ == "__main__":
     parser.add_argument("--clusters", type=int, default=3)
     parser.add_argument("--rewidx", type=int, default=3)
     parser.add_argument("--wait", type=int, default=100)
+    parser.add_argument("--delay", type=int, default=10)
+    parser.add_argument("--warmup", type=int, default=20)
     parser.add_argument("--gamma", type=float, default=0.95)
     parser.add_argument("--revgamma", type=float, default=1.1)
     parser.add_argument("--datasize", type=int, default=1000)
