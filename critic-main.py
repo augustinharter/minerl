@@ -44,7 +44,7 @@ class Handler():
         wait = self.args.wait
         test_size = 300
         data_size = self.args.datasize
-        data_path = f"data/reward-frames/tree-chop/{self.args.color}-ds{data_size}-w{wait}-g{self.args.gamma}-rg{self.args.revgamma}/"
+        data_path = f"data/split/tree-chop/{self.args.color}-ds{data_size}-w{wait}-g{self.args.gamma}-rg{self.args.revgamma}-cons{self.args.cons}/"
         file_name = "data.pickle"
 
         print("loading data:", data_path)
@@ -153,12 +153,64 @@ class Handler():
  
         print()
 
-    def collect_dataset(self, path, size=2000, cons=150, wait=10, datadir="./results/stuff/"):
+    def collect_dataset(self, path, size=2000, wait=10, datadir="./results/stuff/"):
+        os.environ["MINERL_DATA_ROOT"] = "./data"
+        #minerl.data.download("./data", experiment='MineRLTreechopVectorObf-v0')
+        data = minerl.data.make('MineRLTreechopVectorObf-v0', num_workers=1)
+        X = []
+        Y = []
+        cons = self.args.cons
+        wait = self.args.wait
+        chunksize = 20
+
+        print("collecting data set with", size, "frames")
+        for b_idx, (state, act, rew, next_state, done) in enumerate(data.batch_iter(10,cons, preload_buffer_size=1)):
+            print("at batch", b_idx, end='\r')
+            #vector = state['vector']
+
+            # CONVERt COLOR
+            pov = state['pov']
+            if self.args.color == "HSV":
+                pov = (255*rgb_to_hsv(pov/255)).astype(np.uint8)
+
+            rewards = []
+            approaches = []
+            chops = [(i,pos) for (i,pos) in enumerate(np.argmax(rew, axis=1)) if pos>wait]
+            for chopidx,(rowidx, tidx) in enumerate(chops):
+                rewards.extend([0]*chunksize)
+                approaches.extend(pov[rowidx,:chunksize])
+                rewards.extend([1]*chunksize)
+                approaches.extend(pov[rowidx,tidx-chunksize+1:tidx+1])
+                
+                for chidx in range(2*chunksize):
+                    if path.__contains__("test") and len(X)<200: # SAVE IMG
+                        img = Image.fromarray(np.uint8(255*hsv_to_rgb(approaches[chopidx*chunksize*2+chidx]/255)))
+                        #draw = ImageDraw.Draw(img)
+                        #x, y = 0, 0
+                        #draw.text((x, y), "\n".join([str(round(entry,3)) for entry in rewtuple]), fill= (255,255,255), font=self.font)
+                        img.save(datadir+f"{b_idx}-{rowidx}-{chidx}-{'A' if rewards[chopidx*chunksize*2+chidx] else 'B'}.png")
+                            
+            if approaches:
+                X.extend(approaches)
+                Y.extend(rewards)
+
+            if len(X) >= size:
+                X = X[:size]
+                Y = Y[:size]
+                break
+
+        X = np.array(X, dtype=np.uint8)
+        Y = np.array(Y)
+        with gzip.GzipFile(path, 'wb') as fp:
+            pickle.dump((X, Y), fp)
+
+    def collect_dataset_discounted(self, path, size=2000, wait=10, datadir="./results/stuff/"):
         os.environ["MINERL_DATA_ROOT"] = "./data"
         #minerl.data.download("./data", experiment='MineRLTreechopVectorObf-v0')
         data = minerl.data.make('MineRLTreechopVectorObf-v0')
         X = []
         Y = []
+        cons = self.args.cons
 
         print("collecting data set with", size, "frames")
         for b_idx, (state, act, rew, next_state, done) in enumerate(data.batch_iter(10,cons)):
@@ -214,7 +266,7 @@ class Handler():
                     rewtuple = (fak, addfak, revfak, revaddfak, sub)
                     rowrew.append(rewtuple)
 
-                    if len(X)<200: # SAVE IMG
+                    if path.__contains__("test") and len(X)<200: # SAVE IMG
                         img = Image.fromarray(np.uint8(255*hsv_to_rgb(sequ[-i]/255)))
                         draw = ImageDraw.Draw(img)
                         x, y = 0, 0
@@ -273,10 +325,12 @@ if __name__ == "__main__":
     parser.add_argument("--saveevery", type=int, default=5)
     parser.add_argument("--clusters", type=int, default=3)
     parser.add_argument("--rewidx", type=int, default=3)
-    parser.add_argument("--wait", type=int, default=10)
+    parser.add_argument("--wait", type=int, default=100)
     parser.add_argument("--gamma", type=float, default=0.95)
     parser.add_argument("--revgamma", type=float, default=1.1)
     parser.add_argument("--datasize", type=int, default=1000)
+    parser.add_argument("--chunksize", type=int, default=1000)
+    parser.add_argument("--cons", type=int, default=250)
     parser.add_argument("--color", type=str, default="HSV")
     parser.add_argument("--name", type=str, default="default")
     args = parser.parse_args()
