@@ -1,2 +1,0 @@
-Namespace(clusters=3, color='HSV', datasize=10000, epochs=10, gray=True, load=False, name='default', saveevery=5, test=False, train=True, wait=15)
-

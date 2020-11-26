@@ -119,11 +119,10 @@ class VAE(nn.Module):
         return T.sigmoid(res.detach()), mean.detach()
 
 class Critic(nn.Module):
-    def __init__(self, width=64, enc_dim=1, colorchs=3, activation=nn.ReLU):
+    def __init__(self, width=64, enc_dim=1, colorchs=3, activation=nn.ReLU, end=[]):
         super().__init__()
         self.width = width
-        self.enc = nn.Sequential(
-            nn.Conv2d(3,8,3,1,1),
+        modules = [nn.Conv2d(3,8,3,1,1),
             activation(),
             nn.MaxPool2d(2),
             nn.Conv2d(8,8,3,1,1),
@@ -135,9 +134,69 @@ class Critic(nn.Module):
             nn.Conv2d(8,16,3,1,1),
             activation(),
             nn.MaxPool2d(2),
-            nn.Conv2d(16,1,4)
-            )
+            nn.Conv2d(16,1,4)]
+        modules.extend(end)
+        self.enc = nn.Sequential(*modules)
 
     def forward(self, X):
         return self.enc(X)
+
+class Unet(nn.Module):
+    def __init__(self, width=64, edims = [8,8,8,16,32], ddims = [8,8,8,16,32], colorchs=3, activation=nn.ReLU):
+        super().__init__()
+        self.width = width
+        self.pool = nn.MaxPool2d(2)
+        self.acti = activation()
+        self.ups = nn.Upsample(scale_factor=(2,2))
+        self.enc = [
+            nn.Conv2d(colorchs,edims[0],3,1,1),
+            nn.Conv2d(edims[0],edims[1],3,1,1),
+            nn.Conv2d(edims[1],edims[2],3,1,1),
+            nn.Conv2d(edims[2],edims[3],3,1,1),
+            nn.Conv2d(edims[3],edims[4],4)
+        ]
+        self.dec = [
+            nn.Conv2d(edims[0]+ddims[0],1,3,1,1),
+            nn.Conv2d(edims[1]+ddims[1],ddims[0],3,1,1),
+            nn.Conv2d(edims[2]+ddims[2],ddims[1],3,1,1),
+            nn.Conv2d(edims[3]+ddims[3],ddims[2],3,1,1),
+            nn.ConvTranspose2d(ddims[4],ddims[3],4,1,0)
+        ]
+        self.dec_model = nn.Sequential(*self.dec)
+        self.enc_model = nn.Sequential(*self.enc)
+
+    def forward(self, X):
+        pool = self.pool
+        ups = self.ups
+        acti = self.acti
+        enc = self.enc
+        dec = self.dec
+        x0 = acti(enc[0](X))
+        #print(x0.shape)
+        x1 = acti(enc[1](pool(x0)))
+        #print(x1.shape)
+        x2 = acti(enc[2](pool(x1)))
+        #print(x2.shape)
+        x3 = acti(enc[3](pool(x2)))
+        #print(x3.shape)
+        x4 = acti(enc[4](pool(x3)))
+        #print(x4.shape)
+        u3 = acti(dec[4](x4))
+        #print(u3.shape)
+        u2 = acti(dec[3](T.cat((ups(u3), x3), dim=1)))
+        #print(u2.shape)
+        u1 = acti(dec[2](T.cat((ups(u2), x2), dim=1)))
+        #print(u1.shape)
+        u0 = acti(dec[1](T.cat((ups(u1), x1), dim=1)))
+        #print(u0.shape)
+        y = T.sigmoid(dec[0](T.cat((ups(u0), x0), dim=1)))
+        #print(y.shape)
+        
+        return y
+
+if __name__ == "__main__":
+    X = T.randn(12,3,64,64)
+    unet = Unet()
+    Z = unet(X)
+
         
