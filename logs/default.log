@@ -5490,3 +5490,38 @@ Traceback (most recent call last):
   File "critic-main.py", line 375, in segment
     plt.plot(log[:,0], label="value loss")
 IndexError: too many indices for array: array is 1-dimensional, but 2 were indexed
+2020-11-26 19:52:20,322 ERROR root Exception occured:The size of tensor a (262144) must match the size of tensor b (64) at non-singleton dimension 2
+Traceback (most recent call last):
+  File "critic-main.py", line 735, in <module>
+    H.cluster(mode="train")
+  File "critic-main.py", line 447, in cluster
+    assert pixels==test
+RuntimeError: The size of tensor a (262144) must match the size of tensor b (64) at non-singleton dimension 2
+2020-11-26 19:56:21,091 ERROR root Exception occured:The size of tensor a (262144) must match the size of tensor b (64) at non-singleton dimension 2
+Traceback (most recent call last):
+  File "critic-main.py", line 733, in <module>
+    H.cluster(mode="train")
+  File "critic-main.py", line 448, in cluster
+    assert pixels==test
+RuntimeError: The size of tensor a (262144) must match the size of tensor b (64) at non-singleton dimension 2
+2020-11-26 19:56:49,609 ERROR root Exception occured:bool value of Tensor with more than one value is ambiguous
+Traceback (most recent call last):
+  File "critic-main.py", line 733, in <module>
+    H.cluster(mode="train")
+  File "critic-main.py", line 448, in cluster
+    assert X==test
+RuntimeError: bool value of Tensor with more than one value is ambiguous
+2020-11-26 19:58:12,968 ERROR root Exception occured:can't assign a numpy.ndarray to a torch.ByteTensor
+Traceback (most recent call last):
+  File "critic-main.py", line 733, in <module>
+    H.cluster(mode="train")
+  File "critic-main.py", line 456, in cluster
+    row[:,:,:,0] = labels/nc
+TypeError: can't assign a numpy.ndarray to a torch.ByteTensor
+2020-11-26 19:59:21,134 ERROR root Exception occured:'numpy.ndarray' object has no attribute 'numpy'
+Traceback (most recent call last):
+  File "critic-main.py", line 733, in <module>
+    H.cluster(mode="train")
+  File "critic-main.py", line 457, in cluster
+    viz = hsv_to_rgb(row.numpy()/255) if self.args.color == "HSV" else row.numpy()/255
+AttributeError: 'numpy.ndarray' object has no attribute 'numpy'

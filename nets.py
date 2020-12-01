@@ -122,7 +122,7 @@ class Critic(nn.Module):
     def __init__(self, width=64, enc_dim=1, colorchs=3, activation=nn.ReLU, end=[]):
         super().__init__()
         self.width = width
-        modules = [nn.Conv2d(3,8,3,1,1),
+        modules = [nn.Conv2d(colorchs,8,3,1,1),
             activation(),
             nn.MaxPool2d(2),
             nn.Conv2d(8,8,3,1,1),

@@ -18,6 +18,7 @@ import cv2
 from sklearn.cluster import KMeans
 import logging as L
 import gzip
+import math
 from PIL import Image, ImageDraw, ImageFont
 
 
@@ -28,10 +29,10 @@ class Handler():
         self.args = args
         self.device = "cuda" if T.cuda.is_available() else "cpu"
         print("device:", self.device)
-        self.critic = Critic(end=[] if not args.sigmoid else [nn.Sigmoid()]).to(self.device)
+        self.critic = Critic(end=[] if not args.sigmoid else [nn.Sigmoid()], colorchs= args.clustercritic+3 if args.clustercritic else 3).to(self.device)
         self.unet = Unet().to(self.device)
         self.models = dict()
-        self.criticname = "critic"
+        self.criticname = "critic"+ ("+5" if args.clustercritic else "")
         self.unetname = f"unet-l2_{args.L2}-l1_{args.L1}"
         self.models[self.criticname] = self.critic
         self.models[self.unetname] = self.unet
@@ -75,12 +76,14 @@ class Handler():
         # TRAIN data
         with gzip.open(data_path+file_name, "rb") as fp:
            self.X, self.Y = pickle.load(fp)
-        self.dataloader = T.utils.data.DataLoader(T.utils.data.TensorDataset(T.from_numpy(self.X), T.from_numpy(self.Y)), batch_size=batch_size, shuffle=True)
+        self.dataloader = T.utils.data.DataLoader(T.utils.data.TensorDataset(T.from_numpy(self.X), T.from_numpy(self.Y), T.arange(self.X.shape[0], dtype=T.uint8)), batch_size=batch_size, shuffle=True)
+        self.trainsize = self.X.shape[0]
         print(f"loaded train set with {len(self.X)}")
         # TEST data
         with gzip.open(data_path+"test-"+file_name, "rb") as fp:
             self.XX, self.YY = pickle.load(fp)
-        self.testdataloader = T.utils.data.DataLoader(T.utils.data.TensorDataset(T.from_numpy(self.XX), T.from_numpy(self.YY)), batch_size=300, shuffle=False)
+        self.testdataloader = T.utils.data.DataLoader(T.utils.data.TensorDataset(T.from_numpy(self.XX), T.from_numpy(self.YY), T.arange(self.XX.shape[0], dtype=T.uint8)), batch_size=300, shuffle=False)
+        self.testsize = self.XX.shape[0]
         print(f"loaded test set with {len(self.XX)}")
 
     def load_models(self, modelnames=[]):
@@ -105,6 +108,11 @@ class Handler():
         trainf = mode=="train"
         loader = self.dataloader if trainf else self.testdataloader
 
+        if args.clustercritic:
+            with gzip.open(self.data_path+f"{mode}-{str(self.args.clustercritic)}-cluster", 'rb') as fp:
+                channels = pickle.load(fp)
+                
+
         # Setup save path and Logger
         result_path = self.result_path+"critic/"+mode+"/" 
         os.makedirs(result_path, exist_ok=True)
@@ -115,7 +123,7 @@ class Handler():
         opti = T.optim.Adam(critic.parameters())
         # Epoch and Batch Loops
         for epoch in range(int(testf) or self.args.epochs):
-            for b_idx, (X,Y) in enumerate(loader):
+            for b_idx, (X,Y,I) in enumerate(loader):
                 # FORWARD PASS---------------------------
                 if testf: # Stop early if testing
                     if b_idx>=10:
@@ -128,8 +136,14 @@ class Handler():
                     Y = Y.float().to(self.device)
                 #print(X.shape, Y.shape, Y)
 
-                pred = critic(XP).squeeze()
+                if not args.clustercritic:
+                    pred = critic(XP).squeeze() 
+                else:
+                    CHS = T.from_numpy(channels[I]).float().to(self.device)
+                    XPE = T.cat((XP,CHS), dim=1)
+                    pred = critic(XPE).squeeze()
                 YY = T.sigmoid(pred)
+
                 if trainf:
                     if args.discounted:
                         loss = F.mse_loss(pred, Y)
@@ -143,25 +157,30 @@ class Handler():
 
                 # VIZ -----------------------------------
                 if (trainf and not b_idx%100) or testf: # VISUALIZE
+                    vizs = []
+
                     if False:
                         order1 = YY.argsort(descending=True)
                         order2 = Y.argsort(descending=True)
                     if trainf:
                         L.info(f"critic e{epoch} b{b_idx} loss: {loss.item()}")
-                    order1 = np.arange(Y.shape[0])
-                    order2 = np.arange(Y.shape[0])
-                    viz = hsv_to_rgb(X[order1].numpy()/255) if self.args.color == "HSV" else X[order].numpy()/255
+                    viz = hsv_to_rgb(X.numpy()/255) if self.args.color == "HSV" else X[order].numpy()/255
                     viz = np.concatenate(viz, axis=1)
-                    viz2 = hsv_to_rgb(X[order2].numpy()/255) if self.args.color == "HSV" else X[order].numpy()/255
-                    viz2 = np.concatenate(viz2, axis=1)
+                    vizs.append(viz)
+                    for chi in range(args.clustercritic):
+                        chmap = CHS[chi].cpu().numpy()
+                        print(chmap.shape)
+                        segmap = np.stack((chmap, chmap, chmap), axis = -1)
+                        viz = np.concatenate(segmap, axis=1)
+                        vizs.append(viz)
 
-                    viz = np.concatenate((viz,viz2), axis=0)
+                    viz = np.concatenate(vizs, axis=0)
                     img = Image.fromarray(np.uint8(255*viz))
                     draw = ImageDraw.Draw(img)
-                    for i, value in enumerate(YY[order1].tolist()):
+                    for i, value in enumerate(YY.tolist()):
                         x, y = int(i*img.width/len(YY)), 1
                         draw.text((x, y), str(round(value,3)), fill= (255,255,255), font=self.font)
-                    for i, value in enumerate(Y[order2].tolist()):
+                    for i, value in enumerate(Y.tolist()):
                         x, y = int(i*img.width/len(Y)), int(1+img.height/2)
                         draw.text((x, y), str(round(value, 3)), fill=(255,255,255), font=self.font)
 
@@ -187,7 +206,7 @@ class Handler():
         dreamsteps = args.dreamsteps
 
         # Epoch and Batch Loops
-        for b_idx, (X,Y) in enumerate(loader):
+        for b_idx, (X,Y,I) in enumerate(loader):
             # FORWARD PASS---------------------------
 
             XP = (X.permute(0,3,1,2).float().to(self.device)).requires_grad_()
@@ -199,37 +218,34 @@ class Handler():
                 Y = Y.float().to(self.device)
 
             pred = critic(XP).squeeze()
-            Yorig = T.sigmoid(pred)
-            pre = XP.data.detach().clone()
+            original_value = T.sigmoid(pred)
+            original_img = XP.data.detach().clone()
             for upidx in range(dreamsteps):
                 if args.discounted:
                     loss = F.mse_loss(pred, T.zeros_like(pred))
                 else:
                     loss = F.binary_cross_entropy_with_logits(pred, T.zeros_like(pred))
                 #print(f"b{b_idx} up-step {upidx}", loss.item(), end="\r")
-
-                #opti.zero_grad()
-                if XP.grad is not None:
-                    XP.grad *= 0
-
+                critic.zero_grad()
                 loss.backward()
                 #print("grad", XP.grad[0])
-                XP.data = XP.data - 10*XP.grad.data
-                #print((XP.data-pre).mean() - XP.grad.data.mean())
-                #print(XP.requires_grad)
-                #opti.step()
+                avg_grad = np.abs(XP.grad.data.cpu().numpy()).mean()
+                norm_lr = 0.01/avg_grad
+                XP.data += norm_lr*avg_grad
+                XP = XP.clamp(0,255)
                 pred = critic(XP).squeeze()
+                final_value = T.sigmoid(pred)
+                XP.grad.data.zero_()
                 #print(XP.requires_grad)
-                Yfinal = T.sigmoid(pred)
                 #print("grad", XP.grad[0])
-            print((XP-pre).data.max())
+            print((XP-original_img).data.max())
             #log_file.write(log_msg+"\n")
 
             # VIZ -----------------------------------
             XP = XP.detach().permute(0,2,3,1).numpy()/255
             pre = pre.detach().permute(0,2,3,1).numpy()/255
             viz3 = np.zeros_like(XP.numpy())
-            viz3[:,:,2] = np.abs(np.mean((XP-pre).numpy(), axis=-1))
+            viz3[:,:,2] = np.abs(np.mean((XP-original_img).numpy(), axis=-1))
             viz = hsv_to_rgb(XP) if self.args.color == "HSV" else XP
             viz = np.concatenate(viz, axis=1)
             viz2 = hsv_to_rgb(X.numpy()/255) if self.args.color == "HSV" else X.numpy()/255
@@ -239,10 +255,10 @@ class Handler():
             viz = np.concatenate((viz,viz2,viz3), axis=0)
             img = Image.fromarray(np.uint8(255*viz))
             draw = ImageDraw.Draw(img)
-            for i, value in enumerate(Yfinal.tolist()):
+            for i, value in enumerate(final_value.tolist()):
                 x, y = int(i*img.width/len(Yfinal)), 1
                 draw.text((x, y), str(round(value,3)), fill= (255,255,255), font=self.font)
-            for i, value in enumerate(Yorig.tolist()):
+            for i, value in enumerate(original_value.tolist()):
                 x, y = int(i*img.width/len(Yorig)), int(1+img.height/2)
                 draw.text((x, y), str(round(value, 3)), fill=(255,255,255), font=self.font)
 
@@ -260,7 +276,10 @@ class Handler():
         unet = self.unet
         opti = T.optim.Adam(unet.parameters(recurse=True))
         if args.live:
-            critic_opti = T.optim.Adam(critic.parameters(recurse=True))
+            critic_opti = T.optim.Adam(critic.parameters(recurse=True), lr=1e-4)
+        if args.clustercritic:
+            with gzip.open(self.data_path+f"{str(self.args.clustercritic)}-cluster", 'rb') as fp:
+                channels = pickle.load(fp)
 
         # Setup save path and Logger
         result_path = self.result_path+"segment/"+mode+"/" 
@@ -269,12 +288,12 @@ class Handler():
         log_file.write(f"{self.args}\n\n")
         if trainf:
             log = []
-        loss_string = ""
         
 
         # Epoch and Batch Loops
         for epoch in range(int(testf) or self.args.epochs):
-            for b_idx, (X,Y) in enumerate(loader):
+            for b_idx, (X,Y,I) in enumerate(loader):
+                loss_string = "" 
                 # FORWARD PASS---------------------------
                 XP = X.permute(0,3,1,2).float().to(self.device)
                 if args.discounted:
@@ -284,16 +303,20 @@ class Handler():
 
                 # FILTER in A and B
                 if trainf:
+                    if not args.clustercritic:
+                        pred = critic(XP).squeeze() 
+                    else:
+                        CHS = T.from_numpy(channels[I]).float().to(self.device)
+                        XPE = T.cat((XP,CHS), dim=1)
+                        pred = critic(XPE).squeeze()
+                    pred = T.sigmoid(pred)
                     if args.live:
-                        pred = T.sigmoid(critic(XP).squeeze())
                         critic_loss = F.binary_cross_entropy_with_logits(pred, Y)
                         critic_opti.zero_grad()
                         critic_loss.backward()
                         critic_opti.step()
                         loss_string = f"live-critic {critic_loss.item()   }   " + loss_string
-                    else:
-                        with T.no_grad():
-                            pred = T.sigmoid(critic(XP).squeeze())
+
                     #mask = pred>args.threshold
                     negmask = pred<(1-args.threshold)
                     if not negmask.sum():
@@ -307,15 +330,29 @@ class Handler():
                     B = XP[negatives]
                     Z = unet(A)
                     merged = A*(1-Z) + Z*B
-                    mergevalue = critic(merged).squeeze()
+                    if not args.clustercritic:
+                        mergevalue = critic(merged).squeeze()
+                    else:
+                        mergechs = CHS*(1-Z) + Z*CHS[negatives]
+                        mergecombined = T.cat((merged,mergechs), dim=1)
+                        mergevalue = critic(mergecombined).squeeze()
                     valueloss = F.binary_cross_entropy_with_logits(mergevalue, T.zeros_like(mergevalue))
                     loss = valueloss
                     if args.L1:
-                        normloss = args.L1*F.l1_loss(Z, T.zeros_like(Z))
+                        if args.staticL1:
+                            valuefak = 1
+                        else:
+                            valuefak = 1-pred.detach().view(-1,1,1,1)
+                        normloss = args.L1 * F.l1_loss(valuefak*Z, T.zeros_like(Z))
+                        # normloss = args.L1 * (valuefak*Z).mean()
                         loss = loss + normloss
                         loss_string = f"L1: {normloss.item()   }   " + loss_string
                     elif args.L2:
-                        normloss = args.L2*F.mse_loss(Z, T.zeros_like(Z))
+                        if args.staticL1:
+                            valuefak = 1
+                        else:
+                            valuefak = 1-pred.detach().view(-1,1,1,1)
+                        normloss = args.L2*F.mse_loss(valuefak*Z, T.zeros_like(Z))
                         loss = loss + normloss
                         loss_string = f"L2: {normloss.item()   }   " + loss_string
                     if args.distnorm:
@@ -327,20 +364,21 @@ class Handler():
                         #print(xs[0], xs[1], xs.shape, ys.shape, mask.shape)
                         xvote = (xs*mask).flatten(start_dim=-2).mean(dim=-1).squeeze().view(b,1,1,1)
                         yvote = (ys*mask).flatten(start_dim=-2).mean(dim=-1).squeeze().view(b,1,1,1)
-                        print(xs.shape, xvote.shape)
+                        #print(xs.shape, xvote.shape)
                         xs -= xvote # X Distance
                         ys -= yvote # Y Distance
                         dist = (xs.pow(2)+xs.pow(2)).pow(0.5)
                         target = mask-dist
-                        distloss = F.mse_loss(Z, target.to(self.device))
+                        target[target<0] = 0
+                        distloss = 5*F.mse_loss(Z, target.to(self.device))
                         loss = loss + distloss
-                        loss_string = f"dist-norm: {distloss.item()   }" + loss_string
+                        loss_string = f"dist-norm: {distloss.item()   }   " + loss_string
 
                     
                     mergevalue = T.sigmoid(mergevalue)
                     loss_string = f"e{epoch} b{b_idx}  value-loss: {loss.item()}   " + loss_string 
-                    print(loss_string)
-                    log.append((valueloss.item(), normloss.item()))
+                    print((loss_string))
+                    log.append((valueloss.item(), normloss.item() if args.L1 or args.L2 else 0))
                     opti.zero_grad()
                     loss.backward()
                     opti.step()
@@ -348,21 +386,26 @@ class Handler():
 
                 # VIZ -----------------------------------
                 if (trainf and not b_idx%100): # VISUALIZE
+                    vizs = []
                     A = A.cpu().detach().permute(0,2,3,1)
                     B = B.cpu().detach().permute(0,2,3,1)
                     Z = Z.cpu().detach().permute(0,2,3,1)
                     #print("SHAPE", Z.shape)
                     merged = merged.cpu().detach().permute(0,2,3,1)
-                    viz1 = hsv_to_rgb(A.numpy()/255) if self.args.color == "HSV" else A.numpy()/255
-                    viz1 = np.concatenate(viz1, axis=1)
-                    viz2 = hsv_to_rgb(B.numpy()/255) if self.args.color == "HSV" else B.numpy()/255
-                    viz2 = np.concatenate(viz2, axis=1)
-                    viz3 = hsv_to_rgb(merged.numpy()/255) if self.args.color == "HSV" else merged.numpy()/255
-                    viz3 = np.concatenate(viz3, axis=1)
-                    viz4 = T.cat((Z,Z,Z), dim=-1).cpu().numpy()
-                    viz4 = np.concatenate(viz4, axis=1)
+                    viz = hsv_to_rgb(A.numpy()/255) if self.args.color == "HSV" else A.numpy()/255
+                    viz = np.concatenate(viz, axis=1)
+                    vizs.append(viz)
+                    viz = hsv_to_rgb(B.numpy()/255) if self.args.color == "HSV" else B.numpy()/255
+                    viz = np.concatenate(viz, axis=1)
+                    vizs.append(viz)
+                    viz = hsv_to_rgb(merged.numpy()/255) if self.args.color == "HSV" else merged.numpy()/255
+                    viz = np.concatenate(viz, axis=1)
+                    vizs.append(viz)
+                    viz = T.cat((Z,Z,Z), dim=-1).cpu().numpy()
+                    viz = np.concatenate(viz, axis=1)
+                    vizs.append(viz)
 
-                    viz = np.concatenate((viz1,viz2,viz3,viz4), axis=0)
+                    viz = np.concatenate(vizs, axis=0)
                     img = Image.fromarray(np.uint8(255*viz))
                     draw = ImageDraw.Draw(img)
                     for i, value in enumerate(pred.tolist()):
@@ -384,7 +427,7 @@ class Handler():
                     Z = unet(XP)
                     Z = Z.detach().permute(0,2,3,1)
                     seg = X.float()/255
-                    seg[:,:,:,2] = Z.squeeze()
+                    seg[:,:,:,1] = Z.squeeze()
                     viz2 = hsv_to_rgb(seg.numpy()) if self.args.color == "HSV" else seg.numpy()
                     viz2 = np.concatenate(viz2, axis=1)
                     viz4 = T.cat((Z,Z,Z), dim=-1).cpu().numpy()
@@ -421,6 +464,117 @@ class Handler():
             plt.legend()
             plt.savefig(result_path+f"loss.png")
         print()        
+
+    def cluster(self, mode="train", test=0):
+        args = self.args
+        testf = mode=="test"
+        trainf = mode=="train"
+        loader = self.dataloader if trainf else self.testdataloader
+        font = ImageFont.truetype("/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf", 14)
+        size = self.trainsize if trainf else self.testsize
+        cdict = dict([(k,np.zeros((size, int(k), 64, 64))) for k in args.cluster.split(',')])
+
+        # Setup save path and Logger
+        result_path = self.result_path+"cluster/"+mode+"/" 
+        os.makedirs(result_path, exist_ok=True)
+        log_file = open(result_path+"log.txt", "w")
+        log_file.write(f"{self.args}\n\n")
+
+        chs = [0,1]
+        # Epoch and Batch Loops
+        for epoch in range(1):
+            for b_idx, (X,Y,I) in enumerate(loader):
+                print(f"clustering dataset: {b_idx}/{math.ceil(args.datasize/loader.batch_size)}")
+
+                pixels = X.view(-1,3)
+                test = pixels.view(X.shape)
+                assert (X==test).all()
+                pixels = pixels[:,chs].float()/255
+                pixels[:,1] *= 0.1
+
+                plt.ylim(0, 1)
+                plt.hist2d(pixels[:,0].numpy(), pixels[:,1].numpy(), 100)
+                plt.savefig(result_path+f"e{epoch}_b{b_idx}_scatter.png")
+
+                vizs = []
+                viz = hsv_to_rgb(X.numpy()/255) if self.args.color == "HSV" else X.numpy()/255
+                viz = np.concatenate(viz, axis=1)
+                vizs.append(viz)
+                text = []
+                for nc in [int(number) for number in args.cluster.split(',')]:
+                        
+                    clusters =  KMeans(n_clusters=nc).fit(pixels)
+                    labels = clusters.labels_.reshape(X.shape[:-1])
+                    if args.savekmeans:
+                        with open(self.save_path+f'{nc}-kmeans.pickle', 'wb') as fp:
+                            pickle.dump(clusters, fp)
+                    
+                    clusterlayers = []
+                    for clidx in range(nc):
+                        row = X.numpy()
+                        labelselect = labels==clidx
+                        clusterlayers.append(labelselect)
+
+                        if False: #Spatial Clustering
+                            for pi in range(len(row)):
+                                w = X.shape[1]
+                                xs = T.arange(w).repeat((w, 1)).float()/w
+                                ys = T.arange(w).repeat((w, 1)).transpose(0, 1).float()/w
+                                positions = T.stack((xs,ys), dim=-1)
+                                flat_pos = positions.view(-1,2)
+                                sublabels = np.zeros((w,w))
+                                
+                                for li in range(nc):
+                                    square_selection = labels[pi]==li
+                                    flat_selection = square_selection.reshape(-1)
+                                    #print(positions, positions.shape)
+                                    sub = KMeans(n_clusters=2).fit(flat_pos[flat_selection])
+                                    flat_sub_labels = sub.labels_
+                                    sublabels[square_selection] = flat_sub_labels
+                                
+                            row[pi,:,:,0] = 255 - 255 * ((labels[pi] / (nc*2)) * (1+sublabels))
+                        
+                        row[:,:,:,1] = 255 * ((labelselect))
+
+                        if b_idx <10: #"VISUALIZE"
+                            viz = hsv_to_rgb(row/255) if self.args.color == "HSV" else row/255
+                            viz = np.concatenate(viz, axis=1)
+                            vizs.append(viz)
+                            segmap = np.stack((labelselect, labelselect, labelselect), axis = -1)
+                            viz = np.concatenate(segmap, axis=1)
+                            vizs.append(viz)
+                            text.append(f"{nc} {clidx}")
+
+                    clusterlayers = np.transpose(np.array(clusterlayers, dtype=np.uint8), axes=(1,0,2,3))
+                    #print(clusterlayers.shape)
+                    cdict[str(nc)][I] = clusterlayers
+
+
+                if b_idx < 10: #"VISUALIZE"
+                    viz = np.concatenate(vizs, axis=0)
+                    img = Image.fromarray(np.uint8(255*viz))
+                    draw = ImageDraw.Draw(img)
+                    for i, word in enumerate(text):
+                        x, y = 0, (1+i*2)*img.height/(2*len(text)+1)
+                        draw.text((x, y), word, fill= (255,255,255), font=font)
+                    # for i, value in enumerate(pred[negatives].tolist()):
+                    #     x, y = int(i*img.width/len(pred[negatives])), int(1+img.height/3)
+                    #     draw.text((x, y), str(round(value, 3)), fill=(255,255,255), font=self.font)
+                    # for i, value in enumerate(mergevalue.tolist()):
+                    #     x, y = int(i*img.width/len(mergevalue)), int(1+2*img.height/3)
+                    #     draw.text((x, y), str(round(value, 3)), fill=(255,255,255), font=self.font)
+
+                    #plt.imsave(result_path+f"e{epoch}_b{b_idx}.png", viz)
+                    img.save(result_path+f"e{epoch}_b{b_idx}.png")
+
+                if args.savekmeans:
+                    break
+                
+        for key in cdict:
+            print(key, cdict[key].shape)
+            with gzip.GzipFile(self.data_path+f"{mode}-{key}-cluster", 'wb') as fp:
+                pickle.dump(cdict[key], fp)
+
 
     def collect_split_dataset(self, path, size=2000, wait=10, test=0, datadir="./results/stuff/"):
         os.makedirs(datadir+"samples/", exist_ok=True)
@@ -625,7 +779,13 @@ if __name__ == "__main__":
     parser.add_argument("-dream", action="store_true")
     parser.add_argument("-discounted", action="store_true")
     parser.add_argument("-sigmoid", action="store_true")
+    parser.add_argument("-clustersave", action="store_true")
+    parser.add_argument("-staticL1", action="store_true")
+    parser.add_argument("-savekmeans", action="store_true")
     #parser.add_argument("-vizdataset", action="store_true")
+    
+    parser.add_argument("--cluster", type=str, default="")
+    parser.add_argument("--clustercritic", type=int, default=0)
     parser.add_argument("--gray", type=bool, default=True)
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--dreamsteps", type=int, default=0)
@@ -633,7 +793,6 @@ if __name__ == "__main__":
     parser.add_argument("--L2", type=float, default=0.0)
     parser.add_argument("--L1", type=float, default=0.0)
     parser.add_argument("--saveevery", type=int, default=5)
-    parser.add_argument("--clusters", type=int, default=3)
     parser.add_argument("--rewidx", type=int, default=3)
     parser.add_argument("--wait", type=int, default=120)
     parser.add_argument("--delay", type=int, default=10)
@@ -672,9 +831,13 @@ if __name__ == "__main__":
                 H.segment(mode="test")
         if args.dreamsteps:
             if not args.train:
-                H.load_models()
+                H.load_models(modelnames=[H.criticname])
             H.dream()
-
+        if args.cluster:
+            if args.train or args.savekmeans:
+                H.cluster(mode="train")
+            if args.test:
+                H.cluster(mode="test")
 
     except Exception as e:
         L.exception("Exception occured:"+ str(e))
