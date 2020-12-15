@@ -1,0 +1,132 @@
+[19:41:51] [EnvServerSocketHandler/INFO]: [STDOUT]: Received from localhost:<MissionInit xmlns="http://ProjectMalmo.microsoft.com" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" SchemaVersion="" PlatformVersion="0.37.0">
+                                <Mission>
+    <About>
+        <Summary>MineRLTreechopVectorObf-v0</Summary>
+    </About>
+
+    <ModSettings>
+         <MsPerTick>50</MsPerTick>
+          <!--<PrioritiseOffscreenRendering>true</PrioritiseOffscreenRendering>-->
+    </ModSettings>
+
+
+  <ServerSection>
+
+    <ServerInitialConditions>
+      <Time>
+        <!--<StartTime>0</StartTime>-->
+        <AllowPassageOfTime>false</AllowPassageOfTime>
+      </Time>
+            
+      <AllowSpawning>true</AllowSpawning>
+    </ServerInitialConditions>
+
+    <ServerHandlers>
+      <DefaultWorldGenerator forceReset="true" generatorOptions="{&quot;coordinateScale&quot;:684.412,&quot;heightScale&quot;:684.412,&quot;lowerLimitScale&quot;:512.0,&quot;upperLimitScale&quot;:512.0,&quot;depthNoiseScaleX&quot;:200.0,&quot;depthNoiseScaleZ&quot;:200.0,&quot;depthNoiseScaleExponent&quot;:0.5,&q
+[19:41:52] [Realms Notification Availability checker #1/INFO]: Could not authorize you against Realms server: Invalid session id
+[19:41:52] [EnvServerSocketHandler/INFO]: [STDOUT]: REPLYING WITH: MALMOOK
+[19:41:52] [Client thread/INFO]: [STDOUT]: Mission received: MineRLTreechopVectorObf-v0
+[19:41:52] [Client thread/INFO]: [STDOUT]: CLIENT request state: CREATING_HANDLERS
+[19:41:52] [Client thread/INFO]: [STDOUT]: CLIENT enter state: CREATING_HANDLERS
+[19:41:53] [Client thread/INFO]: [STDOUT]: Starting command server.
+[19:41:53] [Thread-10/INFO]: [STDOUT]: INFO: ->com(0) Listening for messages on port 10245
+[19:41:53] [Client thread/INFO]: [STDOUT]: CLIENT request state: EVALUATING_WORLD_REQUIREMENTS
+[19:41:53] [Client thread/INFO]: [STDOUT]: CLIENT enter state: EVALUATING_WORLD_REQUIREMENTS
+[19:41:53] [Client thread/INFO]: [STDOUT]: CLIENT request state: CREATING_NEW_WORLD
+[19:41:53] [Client thread/INFO]: [STDOUT]: CLIENT enter state: CREATING_NEW_WORLD
+[19:41:55] [Server thread/INFO]: Starting integrated minecraft server version 1.11.2
+[19:41:55] [Server thread/INFO]: Generating keypair
+[19:41:56] [Server thread/INFO]: Injecting existing block and item data into this server instance
+[19:41:56] [Server thread/INFO]: Applying holder lookups
+[19:41:56] [Server thread/INFO]: Holder lookups applied
+[19:41:56] [Server thread/INFO]: Loading dimension 0 (TEMP_0_ceed5044-a076-4666-b90f-0c22685b8593) (net.minecraft.server.integrated.IntegratedServer@5ad506fa)
+[19:41:57] [Server thread/INFO]: Loading dimension 1 (TEMP_0_ceed5044-a076-4666-b90f-0c22685b8593) (net.minecraft.server.integrated.IntegratedServer@5ad506fa)
+[19:41:57] [Server thread/INFO]: Loading dimension -1 (TEMP_0_ceed5044-a076-4666-b90f-0c22685b8593) (net.minecraft.server.integrated.IntegratedServer@5ad506fa)
+[19:41:57] [Server thread/INFO]: Preparing start region for level 0
+[19:41:58] [Server thread/INFO]: Preparing spawn area: 5%
+[19:41:59] [Server thread/INFO]: Preparing spawn area: 9%
+[19:42:00] [Server thread/INFO]: Preparing spawn area: 12%
+[19:42:01] [Server thread/INFO]: Preparing spawn area: 16%
+[19:42:03] [Server thread/INFO]: Preparing spawn area: 20%
+[19:42:04] [Server thread/INFO]: Preparing spawn area: 27%
+[19:42:05] [Server thread/INFO]: Preparing spawn area: 34%
+[19:42:06] [Server thread/INFO]: Preparing spawn area: 41%
+[19:42:07] [Server thread/INFO]: Preparing spawn area: 48%
+[19:42:08] [Server thread/INFO]: Preparing spawn area: 57%
+[19:42:09] [Server thread/INFO]: Preparing spawn area: 68%
+[19:42:10] [Server thread/INFO]: Preparing spawn area: 79%
+[19:42:11] [Server thread/INFO]: Preparing spawn area: 88%
+[19:42:12] [Server thread/INFO]: Preparing spawn area: 98%
+[19:42:12] [Server thread/INFO]: Changing view distance to 4, from 10
+[19:42:14] [Server thread/INFO]: [STDOUT]: SERVER request state: WAITING_FOR_MOD_READY
+[19:42:14] [Server thread/INFO]: [STDOUT]: CLIENT request state: WAITING_FOR_SERVER_READY
+[19:42:14] [Server thread/INFO]: [STDOUT]: SERVER enter state: WAITING_FOR_MOD_READY
+[19:42:14] [Client thread/INFO]: [STDOUT]: CLIENT enter state: WAITING_FOR_SERVER_READY
+[19:42:14] [Netty Local Client IO #0/INFO]: [STDOUT]: Transformed Name: net.minecraft.client.entity.EntityOtherPlayerMP
+[19:42:14] [Netty Local Client IO #0/INFO]: [STDOUT]: MALMO: Attempting to transform MinecraftServer
+[19:42:14] [Netty Local Client IO #0/INFO]: [STDOUT]: MALMO: Found EntityOtherPlayerMP, attempting to transform it
+[19:42:14] [Server thread/INFO]: [STDOUT]: SERVER request state: DORMANT
+[19:42:14] [Server thread/INFO]: [STDOUT]: SERVER enter state: DORMANT
+[19:42:14] [Server thread/INFO]: [STDOUT]: INCOMING MISSION: Received MissionInit directly through ServerStateMachine constructor.
+[19:42:14] [Server thread/INFO]: [STDOUT]: Mission received: MineRLTreechopVectorObf-v0
+[19:42:14] [Server thread/INFO]: Received mission: §9MineRLTreechopVectorObf-v0
+[19:42:14] [Server thread/INFO]: Source: §alocalhost
+[19:42:14] [Server thread/INFO]: [STDOUT]: SERVER request state: BUILDING_WORLD
+[19:42:14] [Server thread/INFO]: [STDOUT]: SERVER enter state: BUILDING_WORLD
+[19:42:14] [Server thread/INFO]: [STDOUT]: SERVER request state: WAITING_FOR_AGENTS_TO_ASSEMBLE
+[19:42:14] [Server thread/INFO]: [STDOUT]: SERVER enter state: WAITING_FOR_AGENTS_TO_ASSEMBLE
+[19:42:14] [Server thread/INFO]: [STDOUT]: Experiment requires: 
+[19:42:14] [Server thread/INFO]: [STDOUT]: >>>> MineRLAgent
+[19:42:14] [Netty Local Client IO #0/INFO]: Server protocol version 2
+[19:42:14] [Netty Server IO #1/INFO]: Client protocol version 2
+[19:42:14] [Netty Server IO #1/INFO]: Client attempting to join with 5 mods : minecraft@1.11.2,FML@8.0.99.99,malmomod@0.37.0,forge@13.20.0.2228,mcp@9.19
+[19:42:14] [Netty Local Client IO #0/INFO]: [Netty Local Client IO #0] Client side modded connection established
+[19:42:14] [Server thread/INFO]: [Server thread] Server side modded connection established
+[19:42:14] [Server thread/INFO]: MineRLAgent[local:E:9dcbbdc7] logged in with entity id 190 at (206.5, 56.0, 250.5)
+[19:42:15] [Server thread/INFO]: MineRLAgent joined the game
+[19:42:17] [Client thread/INFO]: [STDOUT]: ***Telling server we are ready - MineRLAgent
+[19:42:17] [Client thread/INFO]: [STDOUT]: ***Telling server we are ready - MineRLAgent
+[19:42:18] [Client thread/INFO]: [STDOUT]: CLIENT request state: RUNNING
+[19:42:18] [Client thread/INFO]: [STDOUT]: CLIENT enter state: RUNNING
+[19:42:18] [Server thread/INFO]: [STDOUT]: SERVER request state: RUNNING
+[19:42:18] [Server thread/INFO]: [STDOUT]: SERVER enter state: RUNNING
+[19:42:18] [Client thread/INFO]: [STDOUT]: Resized the window
+[19:42:18] [Client thread/INFO]: [STDOUT]: Unpausing
+[19:42:19] [Server thread/WARN]: Can't keep up! Did the system time change, or is the server overloaded? Running 4492ms behind, skipping 89 tick(s)
+[19:42:19] [Client thread/INFO]: [CHAT] §l400...
+[19:42:19] [Client thread/INFO]: [CHAT] §l399...
+[19:42:21] [Server thread/INFO]: [STDOUT]: Warning: managed 8/20 ticks this second.
+[19:42:22] [Server thread/INFO]: [STDOUT]: Warning: managed 3/20 ticks this second.
+[19:42:23] [Server thread/INFO]: [STDOUT]: Warning: managed 3/20 ticks this second.
+[19:42:24] [Client thread/INFO]: [CHAT] §l398...
+[19:42:24] [Server thread/INFO]: [STDOUT]: Warning: managed 3/20 ticks this second.
+[19:42:26] [Server thread/INFO]: [STDOUT]: Warning: managed 3/20 ticks this second.
+[19:42:27] [Server thread/INFO]: [STDOUT]: Warning: managed 3/20 ticks this second.
+[19:42:28] [Server thread/INFO]: [STDOUT]: Warning: managed 3/20 ticks this second.
+[19:42:29] [Server thread/INFO]: [STDOUT]: Warning: managed 3/20 ticks this second.
+[19:42:30] [Server thread/INFO]: [STDOUT]: Warning: managed 4/20 ticks this second.
+[19:42:31] [Client thread/INFO]: [CHAT] §l397...
+[19:42:31] [Server thread/INFO]: [STDOUT]: Warning: managed 3/20 ticks this second.
+[19:42:32] [Server thread/INFO]: [STDOUT]: Warning: managed 3/20 ticks this second.
+[19:42:33] [Server thread/INFO]: [STDOUT]: Warning: managed 3/20 ticks this second.
+[19:42:35] [Server thread/INFO]: [STDOUT]: Warning: managed 3/20 ticks this second.
+[19:42:36] [Server thread/INFO]: [STDOUT]: Warning: managed 3/20 ticks this second.
+[19:42:37] [Server thread/INFO]: [STDOUT]: Warning: managed 3/20 ticks this second.
+[19:42:38] [Server thread/INFO]: [STDOUT]: Warning: managed 4/20 ticks this second.
+[19:42:38] [Client thread/INFO]: [CHAT] §l396...
+[19:42:39] [Server thread/INFO]: [STDOUT]: Warning: managed 3/20 ticks this second.
+[19:42:40] [Server thread/INFO]: [STDOUT]: Warning: managed 4/20 ticks this second.
+[19:42:42] [Server thread/INFO]: [STDOUT]: Warning: managed 4/20 ticks this second.
+[19:42:43] [Server thread/INFO]: [STDOUT]: Warning: managed 4/20 ticks this second.
+[19:42:44] [Server thread/INFO]: [STDOUT]: Warning: managed 4/20 ticks this second.
+[19:42:44] [Client thread/INFO]: [CHAT] §l395...
+[19:42:45] [Server thread/INFO]: [STDOUT]: Warning: managed 4/20 ticks this second.
+[19:42:47] [Server thread/INFO]: [STDOUT]: Warning: managed 4/20 ticks this second.
+[19:42:48] [Server thread/INFO]: [STDOUT]: Warning: managed 4/20 ticks this second.
+[19:42:49] [Server thread/INFO]: [STDOUT]: Warning: managed 4/20 ticks this second.
+[19:42:50] [Server thread/INFO]: [STDOUT]: Warning: managed 4/20 ticks this second.
+[19:42:51] [Client thread/INFO]: [CHAT] §l394...
+[19:42:52] [Server thread/INFO]: [STDOUT]: Warning: managed 4/20 ticks this second.
+[19:42:53] [Server thread/INFO]: [STDOUT]: Warning: managed 4/20 ticks this second.
+[19:42:54] [Server thread/INFO]: [STDOUT]: Warning: managed 3/20 ticks this second.
+[19:42:56] [Server thread/INFO]: [STDOUT]: Warning: managed 3/20 ticks this second.
