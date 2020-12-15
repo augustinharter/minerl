@@ -17,9 +17,11 @@ def convert_data_set_to_imgs(file_name):
     with gzip.open(file_name, "rb") as fp:
         X, Y = pickle.load(fp)
 
+    length = len(X)
     for fridx, frame in enumerate(X):
-        rgb = hsv_to_rgb(frame)
-        plt.imsave(f"foldername/{fridx}-{'A' if Y[fridx] else 'B'}", rgb)
+        print(fridx, "out of", length)
+        rgb = hsv_to_rgb(frame/255.0)
+        plt.imsave(f"{foldername}/{fridx}-{'A' if Y[fridx] else 'B'}", rgb)
 
 if __name__ == "__main__":
-    convert_data_set_to_imgs()
+    convert_data_set_to_imgs("/media/compute/homes/aharter/isy2020/minerl/data/split/tree-chop/split-HSV-ds10000-wait120-delay10-warmup20-chunk20/data.pickle")
