@@ -7,13 +7,15 @@ import pickle
 import sklearn
 
 class TreeDetector():
-    def __init__(self, modelpath, kmeanspath="", channels=3):
+    def __init__(self, modelpath="./tree-control-stuff/unet.pt", kmeanspath="./tree-control-stuff/kmeans.pickle", channels=3):
         self.device = "cuda" if T.cuda.is_available() else "cpu"
         self.unet = Unet(colorchs=channels)
         self.unet.load_state_dict(T.load(modelpath, map_location=T.device(self.device)))
         if kmeanspath:
             with open(kmeanspath, "rb") as fp:
                 self.cluster = pickle.load(fp)
+        else:
+            self.cluster = None
 
     def convert(self, X, toHSV=True):
         if len(X.shape) == 3:
@@ -33,7 +35,6 @@ class TreeDetector():
             assert (X==test).all()
             pixels = pixels[:,[0,1]].float()/255
             pixels[:,1] *= 0.1
-
             flat_labels = self.cluster.predict(pixels)
             labels = flat_labels.reshape(X.shape[:-1])
         

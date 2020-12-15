@@ -575,7 +575,6 @@ class Handler():
             with gzip.GzipFile(self.data_path+f"{mode}-{key}-cluster", 'wb') as fp:
                 pickle.dump(cdict[key], fp)
 
-
     def collect_split_dataset(self, path, size=2000, wait=10, test=0, datadir="./results/stuff/"):
         os.makedirs(datadir+"samples/", exist_ok=True)
         os.environ["MINERL_DATA_ROOT"] = "./data"
