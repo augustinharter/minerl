@@ -1,5 +1,4 @@
 import gym
-import imageio
 import minerl
 import pygame
 import cv2

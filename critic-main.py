@@ -168,8 +168,8 @@ class Handler():
                     viz = np.concatenate(viz, axis=1)
                     vizs.append(viz)
                     for chi in range(args.clustercritic):
-                        chmap = CHS[chi].cpu().numpy()
-                        print(chmap.shape)
+                        chmap = CHS[:,chi].cpu().numpy()
+                        #print(chmap.shape)
                         segmap = np.stack((chmap, chmap, chmap), axis = -1)
                         viz = np.concatenate(segmap, axis=1)
                         vizs.append(viz)
@@ -581,6 +581,8 @@ class Handler():
         os.environ["MINERL_DATA_ROOT"] = "./data"
         #minerl.data.download("./data", experiment='MineRLTreechopVectorObf-v0')
         data = minerl.data.make('MineRLTreechopVectorObf-v0', num_workers=1)
+        names = data.get_trajectory_names()
+
         X = []
         Y = []
         cons = self.args.cons
@@ -591,6 +593,7 @@ class Handler():
 
         print("collecting data set with", size, "frames")
         for b_idx, (state, act, rew, next_state, done) in enumerate(data.batch_iter(test or 10, 2*wait if not test else size, preload_buffer_size=1)):
+        #for state, action, reward, state_next, done in data.load_data(name):
             print("at batch", b_idx, end='\r')
             #vector = state['vector']
 

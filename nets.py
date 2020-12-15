@@ -1,7 +1,6 @@
 import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
-import utils
 from itertools import chain
 
 class AutoEncoder(nn.Module):
