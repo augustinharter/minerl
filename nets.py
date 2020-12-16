@@ -4,7 +4,6 @@ import torch.nn.functional as F
 from itertools import chain
 import torchvision.models as visionmodels
 from torchvision import transforms
-import torchsummary as summary
 
 class AutoEncoder(nn.Module):
     def __init__(self, width, enc_dim, colorchs, activation=nn.Tanh):

@@ -5,3 +5,4 @@ saves/
 logs/
 treedetect/
 eval/
+__pycache__/

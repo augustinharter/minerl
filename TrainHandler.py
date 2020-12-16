@@ -28,11 +28,11 @@ class Handler():
         #os.environ["MINERL_DATA_ROOT"] = "data"
         #self.data = minerl.data.make('MineRLTreechopVectorObf-v0')
         self.args = args
-        #self.device = "cuda" if T.cuda.is_available() else "cpu"
-        self.device = "cpu"
+        self.device = "cuda" if T.cuda.is_available() else "cpu"
+        #self.device = "cpu"
         print("device:", self.device)
         if args.resnet:
-            self.critic = ResNetCritic()
+            self.critic = ResNetCritic().to(self.device)
         else:
             self.critic = Critic(end=[] if not args.sigmoid else [nn.Sigmoid()], colorchs= args.clustercritic+3 if args.clustercritic else 3).to(self.device)
         self.unet = Unet().to(self.device)
@@ -50,7 +50,7 @@ class Handler():
                 self.data_path = f"./isy_minerl/segm/data/split/tree-chop/{self.data_args}/"
             else:
                 self.data_path = f"./data/split/tree-chop/{self.data_args}/"
-        self.arg_path = self.data_args +"/"
+        self.arg_path = f"{'resnet-' if args.resnet else ''}{'blur'+str(args.blur) if args.blur else ''}"+self.data_args +"/"
         print("model path:", self.arg_path)
         if args.integrated:
             self.result_path = f"./isy_minerl/segm/results/Critic/"+ args.name+ "-"+ self.arg_path
