@@ -50,7 +50,7 @@ class Handler():
                 self.data_path = f"./isy_minerl/segm/data/split/tree-chop/{self.data_args}/"
             else:
                 self.data_path = f"./data/split/tree-chop/{self.data_args}/"
-        self.arg_path = f"{'resnet-' if args.resnet else ''}{'blur'+str(args.blur)+'-' if args.blur else ''}"+self.data_args +"/"
+        self.arg_path = f"{'resnet-' if args.resnet else ''}{'blur'+str(args.blur)+'-' if args.blur else ''}{'L1_'+str(args.L1)+'-'}"+self.data_args +"/"
         print("model path:", self.arg_path)
         if args.integrated:
             self.result_path = f"./isy_minerl/segm/results/Critic/"+ args.name+ "-"+ self.arg_path
@@ -883,7 +883,7 @@ if __name__ == "__main__":
     parser.add_argument("--dreamsteps", type=int, default=0)
     parser.add_argument("--threshold", type=float, default=0.9)
     parser.add_argument("--L2", type=float, default=0.0)
-    parser.add_argument("--L1", type=float, default=0.0)
+    parser.add_argument("--L1", type=float, default=30.0)
     parser.add_argument("--saveevery", type=int, default=5)
     parser.add_argument("--rewidx", type=int, default=3)
     parser.add_argument("--wait", type=int, default=120)
