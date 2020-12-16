@@ -5676,3 +5676,57 @@ RuntimeError: Calculated padded input size per channel: (3 x 3). Kernel size: (4
 2020-12-16 22:30:41,464 INFO root critic e7 b0 loss: 0.4367125332355499
 2020-12-16 22:30:41,811 INFO root critic e8 b0 loss: 0.40529248118400574
 2020-12-16 22:30:42,248 INFO root critic e9 b0 loss: 0.3678622841835022
+2020-12-16 23:33:29,796 INFO root critic e0 b0 loss: 1.0112653970718384
+2020-12-16 23:33:30,178 INFO root critic e1 b0 loss: 0.6995084881782532
+2020-12-16 23:33:30,532 INFO root critic e2 b0 loss: 0.6315436363220215
+2020-12-16 23:33:30,812 INFO root critic e3 b0 loss: 0.5969389081001282
+2020-12-16 23:33:31,142 INFO root critic e4 b0 loss: 0.5548695921897888
+2020-12-16 23:33:31,483 INFO root critic e5 b0 loss: 0.508190393447876
+2020-12-16 23:33:31,805 INFO root critic e6 b0 loss: 0.4309837222099304
+2020-12-16 23:33:32,084 INFO root critic e7 b0 loss: 0.40048396587371826
+2020-12-16 23:33:32,359 INFO root critic e8 b0 loss: 0.35517412424087524
+2020-12-16 23:33:32,642 INFO root critic e9 b0 loss: 0.3091925382614136
+2020-12-16 23:33:32,920 ERROR root Exception occured:Given groups=1, weight of size 8 8 3 3, expected input[64, 11, 32, 32] to have 8 channels, but got 11 channels instead
+Traceback (most recent call last):
+  File "TrainHandler.py", line 918, in <module>
+    H.segment(mode="train")
+  File "TrainHandler.py", line 381, in segment
+    Z = unet(A)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/module.py", line 541, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/augo/uni/minerl/nets.py", line 232, in forward
+    x1 = acti(enc[1](T.cat((pool(x0), d1), dim=1)))
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/module.py", line 541, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/conv.py", line 345, in forward
+    return self.conv2d_forward(input, self.weight)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/conv.py", line 342, in conv2d_forward
+    self.padding, self.dilation, self.groups)
+RuntimeError: Given groups=1, weight of size 8 8 3 3, expected input[64, 11, 32, 32] to have 8 channels, but got 11 channels instead
+2020-12-16 23:34:22,423 INFO root critic e0 b0 loss: 1.2994811534881592
+2020-12-16 23:34:22,726 INFO root critic e1 b0 loss: 0.9732927680015564
+2020-12-16 23:34:22,996 INFO root critic e2 b0 loss: 0.6769513487815857
+2020-12-16 23:34:23,272 INFO root critic e3 b0 loss: 0.567049503326416
+2020-12-16 23:34:23,544 INFO root critic e4 b0 loss: 0.6088974475860596
+2020-12-16 23:34:23,819 INFO root critic e5 b0 loss: 0.47123393416404724
+2020-12-16 23:34:24,097 INFO root critic e6 b0 loss: 0.4890916347503662
+2020-12-16 23:34:24,389 INFO root critic e7 b0 loss: 0.41687169671058655
+2020-12-16 23:34:24,678 INFO root critic e8 b0 loss: 0.40646854043006897
+2020-12-16 23:34:24,949 INFO root critic e9 b0 loss: 0.3404254913330078
+2020-12-16 23:34:25,676 ERROR root Exception occured:too many indices for array
+Traceback (most recent call last):
+  File "TrainHandler.py", line 918, in <module>
+    H.segment(mode="train")
+  File "TrainHandler.py", line 506, in segment
+    log1 = log[:10*end,0]
+IndexError: too many indices for array
+2020-12-16 23:37:41,375 INFO root critic e0 b0 loss: 0.7850250005722046
+2020-12-16 23:37:41,654 INFO root critic e1 b0 loss: 0.6245090365409851
+2020-12-16 23:37:41,947 INFO root critic e2 b0 loss: 0.5393578410148621
+2020-12-16 23:37:42,267 INFO root critic e3 b0 loss: 0.4747353792190552
+2020-12-16 23:37:42,555 INFO root critic e4 b0 loss: 0.4274124205112457
+2020-12-16 23:37:42,898 INFO root critic e5 b0 loss: 0.3486228585243225
+2020-12-16 23:37:43,239 INFO root critic e6 b0 loss: 0.29950958490371704
+2020-12-16 23:37:43,556 INFO root critic e7 b0 loss: 0.22145551443099976
+2020-12-16 23:37:43,833 INFO root critic e8 b0 loss: 0.1811307668685913
+2020-12-16 23:37:44,112 INFO root critic e9 b0 loss: 0.15750521421432495

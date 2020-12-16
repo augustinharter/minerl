@@ -1,7 +1,7 @@
 import argparse
 from matplotlib import pyplot as plt
 import os
-from nets import AutoEncoder, VAE, Critic, Unet, ResNetCritic
+from nets import AutoEncoder, VAE, Critic, Unet, ResNetCritic, GroundedUnet
 import numpy as np
 import torch as T
 import torch.nn as nn
@@ -35,7 +35,10 @@ class Handler():
             self.critic = ResNetCritic().to(self.device)
         else:
             self.critic = Critic(end=[] if not args.sigmoid else [nn.Sigmoid()], colorchs= args.clustercritic+3 if args.clustercritic else 3).to(self.device)
-        self.unet = Unet().to(self.device)
+        if args.grounded:
+            self.unet = GroundedUnet().to(self.device)
+        else:
+            self.unet = Unet().to(self.device)
         self.models = dict()
         self.criticname = "critic"+ ("+5" if args.clustercritic else "")
         if args.discounted:
@@ -50,7 +53,7 @@ class Handler():
                 self.data_path = f"./isy_minerl/segm/data/split/tree-chop/{self.data_args}/"
             else:
                 self.data_path = f"./data/split/tree-chop/{self.data_args}/"
-        self.arg_path = f"{'resnet-' if args.resnet else ''}{'blur'+str(args.blur)+'-' if args.blur else ''}{'L1_'+str(args.L1)+'-'}"+self.data_args +"/"
+        self.arg_path = f"{'grounded-' if args.grounded else ''}{'resnet-' if args.resnet else ''}{'blur'+str(args.blur)+'-' if args.blur else ''}{'L1_'+str(args.L1)+'-'}"+self.data_args +"/"
         print("model path:", self.arg_path)
         if args.integrated:
             self.result_path = f"./isy_minerl/segm/results/Critic/"+ args.name+ "-"+ self.arg_path
@@ -63,6 +66,7 @@ class Handler():
             self.save_path = f"./train/"
             self.font = ImageFont.truetype("./isy_minerl/segm/etc/Ubuntu-R.ttf", 9)
         else:
+            self
             self.unetname = f"unet-l2_{args.L2}-l1_{args.L1}"
             self.save_path = f"./saves/Critic/"+self.arg_path
             self.font = ImageFont.truetype("/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf", 9)
@@ -91,7 +95,6 @@ class Handler():
                 blurkernel = T.tensor([[[[1,4,6,4,1], [4,16,24,16,4], [6,24,36,24,6], [4,16,24,16,4], [1,4,6,4,1]]]*1]*3).float()/256
                 blur = lambda x: F.conv2d(x, blurkernel, padding=2, groups=3)
 
-
         print("loading data:", data_path)
         # TRAIN
         if not os.path.exists(data_path+file_name):
@@ -103,7 +106,6 @@ class Handler():
             print("collecting test set...")
             os.makedirs(data_path, exist_ok=True)
             data_collector(data_path+"test-"+file_name, size=test_size, datadir=data_path, test=10)
-
 
         # TRAIN data
         with gzip.open(data_path+file_name, "rb") as fp:
@@ -873,6 +875,7 @@ if __name__ == "__main__":
     parser.add_argument("-staticL1", action="store_true")
     parser.add_argument("-savekmeans", action="store_true")
     parser.add_argument("-integrated", action="store_true")
+    parser.add_argument("-grounded", action="store_true")
     #parser.add_argument("-vizdataset", action="store_true")
     
     parser.add_argument("--blur", type=int, default=0)

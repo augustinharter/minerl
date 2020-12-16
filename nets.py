@@ -195,6 +195,63 @@ class Unet(nn.Module):
         
         return y
 
+class GroundedUnet(nn.Module):
+    def __init__(self, width=64, edims = [8,8,8,16,32], ddims = [8,8,8,16,32], colorchs=3, activation=nn.ReLU):
+        super().__init__()
+        self.width = width
+        self.pool = nn.MaxPool2d(2)
+        self.acti = activation()
+        self.ups = nn.Upsample(scale_factor=(2,2))
+        self.down = lambda x: F.interpolate(x, scale_factor=0.5, mode="bilinear")
+        self.enc = [
+            nn.Conv2d(colorchs,edims[0],3,1,1),
+            nn.Conv2d(3+edims[0],edims[1],3,1,1),
+            nn.Conv2d(3+edims[1],edims[2],3,1,1),
+            nn.Conv2d(3+edims[2],edims[3],3,1,1),
+            nn.Conv2d(edims[3],edims[4],4)
+        ]
+        self.dec = [
+            nn.Conv2d(edims[0]+ddims[0],1,3,1,1),
+            nn.Conv2d(edims[1]+ddims[1],ddims[0],3,1,1),
+            nn.Conv2d(edims[2]+ddims[2],ddims[1],3,1,1),
+            nn.Conv2d(edims[3]+ddims[3],ddims[2],3,1,1),
+            nn.ConvTranspose2d(ddims[4],ddims[3],4,1,0)
+        ]
+        self.dec_model = nn.Sequential(*self.dec)
+        self.enc_model = nn.Sequential(*self.enc)
+
+    def forward(self, X):
+        pool = self.pool
+        ups = self.ups
+        acti = self.acti
+        enc = self.enc
+        dec = self.dec
+        x0 = acti(enc[0](X))
+        #print(x0.shape)
+        d1 = self.down(X)
+        x1 = acti(enc[1](T.cat((pool(x0), d1), dim=1)))
+        #print(x1.shape)
+        d2 = self.down(d1)
+        x2 = acti(enc[2](T.cat((pool(x1), d2), dim=1)))
+        #print(x2.shape)
+        d3 = self.down(d2)
+        x3 = acti(enc[3](T.cat((pool(x2), d3), dim=1)))
+        #print(x3.shape)
+        x4 = acti(enc[4](pool(x3)))
+        #print(x4.shape)
+        u3 = acti(dec[4](x4))
+        #print(u3.shape)
+        u2 = acti(dec[3](T.cat((ups(u3), x3), dim=1)))
+        #print(u2.shape)
+        u1 = acti(dec[2](T.cat((ups(u2), x2), dim=1)))
+        #print(u1.shape)
+        u0 = acti(dec[1](T.cat((ups(u1), x1), dim=1)))
+        #print(u0.shape)
+        y = T.sigmoid(dec[0](T.cat((ups(u0), x0), dim=1)))
+        #print(y.shape)
+        
+        return y
+
 class ResNetCritic(nn.Module):
     def __init__(self):
         super().__init__()
