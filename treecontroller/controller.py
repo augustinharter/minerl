@@ -9,6 +9,7 @@ import random
 from treedetect import TreeDetector
 import numpy as np
 import torch as T
+import sys
 
 #from mod.isy_env_wrappers import *
 from minerl.viewer.trajectory_display import HumanTrajectoryDisplay
@@ -100,17 +101,20 @@ def main():
 
     # env = PoVDepthWrapper(env)
 
-    env = gym.make("MineRLTreechopVectorObf-v0")
-    env.seed(12)
-    obs = env.reset()
-    #obs = dict() 
-    #obs['pov'] = cv2.cvtColor(cv2.imread("./tree-control-stuff/example.png"), cv2.COLOR_BGR2RGB)
+    real_env = True
+    if "-dummy" in sys.argv:
+        real_env = False
+    verbose = "-verbose" in sys.argv
+    # env = PoVDepthWrapper(env)
 
-    # # instructions = '{}.render()\n Actions listed below.'.format(
-    # #     env.env_spec.name)
-    #
-    # viewer = HumanTrajectoryDisplay(env.env_spec.name,
-    #                                 instructions=instructions, cum_rewards=None)
+    if real_env:
+        env = gym.make("MineRLTreechopVectorObf-v0")
+        env.seed(7)
+        obs = env.reset()
+    else:
+        obs = dict() 
+        obs['pov'] = cv2.cvtColor(cv2.imread("./tree-control-stuff/example.png"), cv2.COLOR_BGR2RGB)
+
     # Setup pygame input
     pygame.init()
     display = pygame.display.set_mode((960, 320))
@@ -121,6 +125,10 @@ def main():
     rgb_list = []
     counter = 0
     indx = [[1, 2, 'Left'], [3, 2, 'Right'], [2, 1, 'Up'], [2, 3, 'Down']]
+
+    # VIDEO WRITER
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    clip = cv2.VideoWriter("live-clip-01.avi", fourcc, 20, (64,64))
 
     # SETUP Tree Controller
     left = np.array(actions_matrix[1][2], dtype='float32')
@@ -133,11 +141,13 @@ def main():
         jump = pickle.load(fp)
     controller = TreeController(left, right, up, down, attack, jump)
 
-    #action = dict()
-    action = env.action_space.noop()
+    action = dict()
+    if real_env:
+        action = env.action_space.noop()
     # Loop through the environment
     while True:
         treefound, actions, mask = controller.navigate(obs['pov'][:,:,:3], verbose=True)
+        #actions = []
         #print(actions)
         if True:
             counter += 1
@@ -188,6 +198,14 @@ def main():
                 tmp = np.array(actions_matrix[i][j], dtype='float32')
                 actions = [tmp]
 
+            if keys[pygame.K_q]:
+                # action["right"] = 1
+                actions = [jump]
+
+            if keys[pygame.K_e]:
+                # action["right"] = 1
+                actions = [attack]
+
             # # Jumping mapped to space bar
             # if keys[pygame.K_SPACE]:
             #     action["jump"] = 1
@@ -209,8 +227,13 @@ def main():
             action['vector'] = act
             obs, rew, done, act = env.step(action)
         rgb = obs['pov'][:,:,:3]
+        #images.append(rgb)
+        clip.write(cv2.cvtColor(rgb.astype(np.uint8), cv2.COLOR_RGB2BGR))
+
+
         gray = cv2.cvtColor(rgb.astype(np.uint8), cv2.COLOR_RGB2GRAY)
         #print("gray shape", gray.shape)
+        mask = np.ones_like(mask)
         gray = np.stack((gray,gray,gray), axis=-1)
         merge = (rgb*mask + (gray*(1-mask)))
         mask_view = np.concatenate((mask,mask,mask), axis=2)*255
@@ -224,7 +247,11 @@ def main():
         surf = pygame.surfarray.make_surface(combined)
         display.blit(surf,(0,0))
         pygame.display.update()
-        time.sleep(1/5)
+        #time.sleep(1/5)
+
+        if counter >= 2000:
+            clip.release()
+            exit(0)
 
 
 if __name__ == '__main__':

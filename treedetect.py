@@ -50,18 +50,19 @@ class TreeDetector():
 
 if __name__ == '__main__':
     # Detector Setup
-    modelpath = "/media/compute/homes/aharter/isy2020/minerl/saves/Critic/split-HSV-ds10000-wait120-delay10-warmup20-chunk20/unet-l2_0.0-l1_30.0.pt"
-    kmeanspath = "/media/compute/homes/aharter/isy2020/minerl/saves/Critic/split-HSV-ds10000-wait120-delay10-warmup20-chunk20/5-kmeans.pickle"
+    modelpath = "treecontroller/tree-control-stuff/unet.pt"
+    kmeanspath = "treecontroller/tree-control-stuff/kmeans.pickle"
     
     detector = TreeDetector(modelpath, kmeanspath)
 
     # Video setup
     videopaths = [
+        "live-clip-01.avi",
         "./data/MineRLTreechopVectorObf-v0/v3_agonizing_kale_tree_nymph-7_72884-74584/recording.mp4",
-        "./data/MineRLTreechopVectorObf-v0/v3_alarming_arugula_medusa-12_58066-60565/recording.mp4",
-        "./data/MineRLTreechopVectorObf-v0/v3_content_squash_angel-3_11240-12783/recording.mp4"
+        #"./data/MineRLTreechopVectorObf-v0/v3_alarming_arugula_medusa-12_58066-60565/recording.mp4",
+        #"./data/MineRLTreechopVectorObf-v0/v3_content_squash_angel-3_11240-12783/recording.mp4"
     ]
-    videonames = [vid.split("/")[-2] for vid in videopaths]
+    videonames = ["live-01-segmented", "offline-01-segmented"]
     resultpath = "results/treedetect/"
 
     for vididx, videopath in enumerate(videopaths):
@@ -88,7 +89,7 @@ if __name__ == '__main__':
             combined = np.concatenate((BGR, overlay, 255*mask), axis=1).astype(np.uint8)
             #print(combined.shape)
             out.write(combined)
-
+        print(RGB.shape, np.max(RGB), RGB[0])
         cap.release()
         cv2.destroyAllWindows()
     

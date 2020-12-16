@@ -2,6 +2,9 @@ import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
 from itertools import chain
+import torchvision.models as visionmodels
+from torchvision import transforms
+import torchsummary as summary
 
 class AutoEncoder(nn.Module):
     def __init__(self, width, enc_dim, colorchs, activation=nn.Tanh):
@@ -193,9 +196,42 @@ class Unet(nn.Module):
         
         return y
 
+class ResNetCritic(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.resnet = get_resnet18_features()
+        self.head = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(512*2*2, 256),
+            nn.ReLU(),
+            nn.Linear(256, 1),    
+        )
+
+    def forward(self, X):
+        features = self.resnet(X)
+        return self.head(features)
+
+    
+def get_resnet18_features():
+    resnet18 = visionmodels.resnet18(pretrained=True)
+    features = nn.Sequential(*(list(resnet18.children())[0:8]))
+    return features
+
+def get_inceptionv3_features():
+    net = visionmodels.inception_v3(pretrained=True)
+    features = nn.Sequential(*(list(net.children())[0:8]))
+    return features
+
+def get_normalizer():
+    return transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
 if __name__ == "__main__":
+    bignet = get_resnet18_features()
     X = T.randn(12,3,64,64)
     unet = Unet()
     Z = unet(X)
+    ZZ = bignet(X)
+    print(ZZ.shape)
+    #print(bignet)
 
         
