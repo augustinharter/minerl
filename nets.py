@@ -4,6 +4,8 @@ import torch.nn.functional as F
 from itertools import chain
 import torchvision.models as visionmodels
 from torchvision import transforms
+from matplotlib.colors import rgb_to_hsv, hsv_to_rgb
+import numpy as np
 
 class AutoEncoder(nn.Module):
     def __init__(self, width, enc_dim, colorchs, activation=nn.Tanh):
@@ -253,8 +255,10 @@ class GroundedUnet(nn.Module):
         return y
 
 class ResNetCritic(nn.Module):
-    def __init__(self):
+    def __init__(self, HSV=True):
         super().__init__()
+        self.HSV = HSV
+        self.norm = get_normalizer()
         self.resnet = get_resnet18_features()
         self.head = nn.Sequential(
             nn.Flatten(),
@@ -264,6 +268,13 @@ class ResNetCritic(nn.Module):
         )
 
     def forward(self, X):
+        if X.max()>1:
+            X = X/255.0
+        X = np.swapaxes(X.numpy(),1,-1)
+        if self.HSV:
+            X = hsv_to_rgb(X)
+        X = self.norm(X)
+        X = T.from_numpy(np.swapaxes(X, 1, -1)).float()
         features = self.resnet(X)
         return self.head(features)
 
@@ -279,7 +290,8 @@ def get_inceptionv3_features():
     return features
 
 def get_normalizer():
-    return transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    #return transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    return lambda x: (x-np.array([0.485, 0.456, 0.406]))/np.array([0.229, 0.224, 0.225])
 
 if __name__ == "__main__":
     bignet = get_resnet18_features()

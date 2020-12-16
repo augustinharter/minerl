@@ -5730,3 +5730,102 @@ IndexError: too many indices for array
 2020-12-16 23:37:43,556 INFO root critic e7 b0 loss: 0.22145551443099976
 2020-12-16 23:37:43,833 INFO root critic e8 b0 loss: 0.1811307668685913
 2020-12-16 23:37:44,112 INFO root critic e9 b0 loss: 0.15750521421432495
+2020-12-17 00:13:10,842 ERROR root Exception occured:'>' not supported between instances of 'builtin_function_or_method' and 'int'
+Traceback (most recent call last):
+  File "TrainHandler.py", line 916, in <module>
+    H.critic_pipe(mode="train")
+  File "TrainHandler.py", line 189, in critic_pipe
+    pred = critic(XP).squeeze()
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/module.py", line 541, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/augo/uni/minerl/nets.py", line 271, in forward
+    if X.max>1:
+TypeError: '>' not supported between instances of 'builtin_function_or_method' and 'int'
+2020-12-17 00:13:35,702 ERROR root Exception occured:Last dimension of input array must be 3; shape (64, 3, 64, 64) was found.
+Traceback (most recent call last):
+  File "TrainHandler.py", line 916, in <module>
+    H.critic_pipe(mode="train")
+  File "TrainHandler.py", line 189, in critic_pipe
+    pred = critic(XP).squeeze()
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/module.py", line 541, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/augo/uni/minerl/nets.py", line 274, in forward
+    X = T.from_numpy(hsv_to_rgb(X))
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/matplotlib/colors.py", line 1428, in hsv_to_rgb
+    "shape {shp} was found.".format(shp=hsv.shape))
+ValueError: Last dimension of input array must be 3; shape (64, 3, 64, 64) was found.
+2020-12-17 00:15:01,757 ERROR root Exception occured:name 'norm' is not defined
+Traceback (most recent call last):
+  File "TrainHandler.py", line 916, in <module>
+    H.critic_pipe(mode="train")
+  File "TrainHandler.py", line 189, in critic_pipe
+    pred = critic(XP).squeeze()
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/module.py", line 541, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/augo/uni/minerl/nets.py", line 275, in forward
+    features = self.resnet(norm(X))
+NameError: name 'norm' is not defined
+2020-12-17 00:15:13,734 ERROR root Exception occured:tensor is not a torch image.
+Traceback (most recent call last):
+  File "TrainHandler.py", line 916, in <module>
+    H.critic_pipe(mode="train")
+  File "TrainHandler.py", line 189, in critic_pipe
+    pred = critic(XP).squeeze()
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/module.py", line 541, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/augo/uni/minerl/nets.py", line 275, in forward
+    features = self.resnet(self.norm(X))
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torchvision/transforms/transforms.py", line 175, in __call__
+    return F.normalize(tensor, self.mean, self.std, self.inplace)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torchvision/transforms/functional.py", line 209, in normalize
+    raise TypeError('tensor is not a torch image.')
+TypeError: tensor is not a torch image.
+2020-12-17 00:28:55,404 ERROR root Exception occured:The size of tensor a (64) must match the size of tensor b (3) at non-singleton dimension 3
+Traceback (most recent call last):
+  File "TrainHandler.py", line 916, in <module>
+    H.critic_pipe(mode="train")
+  File "TrainHandler.py", line 189, in critic_pipe
+    pred = critic(XP).squeeze()
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/module.py", line 541, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/augo/uni/minerl/nets.py", line 275, in forward
+    features = self.resnet(self.norm(X))
+  File "/home/augo/uni/minerl/nets.py", line 291, in <lambda>
+    return lambda x: (x-T.tensor([0.485, 0.456, 0.406]))/T.tensor([0.229, 0.224, 0.225])
+RuntimeError: The size of tensor a (64) must match the size of tensor b (3) at non-singleton dimension 3
+2020-12-17 00:32:29,231 ERROR root Exception occured:operands could not be broadcast together with shapes (64,3,64,64) (3,) 
+Traceback (most recent call last):
+  File "TrainHandler.py", line 916, in <module>
+    H.critic_pipe(mode="train")
+  File "TrainHandler.py", line 189, in critic_pipe
+    pred = critic(XP).squeeze()
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/module.py", line 541, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/augo/uni/minerl/nets.py", line 276, in forward
+    X = self.norm(X)
+  File "/home/augo/uni/minerl/nets.py", line 294, in <lambda>
+    return lambda x: (x-np.array([0.485, 0.456, 0.406]))/np.array([0.229, 0.224, 0.225])
+ValueError: operands could not be broadcast together with shapes (64,3,64,64) (3,) 
+2020-12-17 00:33:30,297 ERROR root Exception occured:Expected object of scalar type Double but got scalar type Float for argument #2 'weight' in call to _thnn_conv2d_forward
+Traceback (most recent call last):
+  File "TrainHandler.py", line 916, in <module>
+    H.critic_pipe(mode="train")
+  File "TrainHandler.py", line 189, in critic_pipe
+    pred = critic(XP).squeeze()
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/module.py", line 541, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/augo/uni/minerl/nets.py", line 278, in forward
+    features = self.resnet(X)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/module.py", line 541, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/container.py", line 92, in forward
+    input = module(input)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/module.py", line 541, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/conv.py", line 345, in forward
+    return self.conv2d_forward(input, self.weight)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/conv.py", line 342, in conv2d_forward
+    self.padding, self.dilation, self.groups)
+RuntimeError: Expected object of scalar type Double but got scalar type Float for argument #2 'weight' in call to _thnn_conv2d_forward
+2020-12-17 00:34:05,274 INFO root critic e0 b0 loss: 0.6995505094528198
+2020-12-17 00:34:07,878 INFO root critic e1 b0 loss: 0.17246995866298676

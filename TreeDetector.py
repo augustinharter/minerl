@@ -1,13 +1,16 @@
 import torch as T
+import torch.nn.functional as F
 from nets import Unet
 import numpy as np
 from matplotlib.colors import rgb_to_hsv
 import pickle
 import cv2
+import sys
 
 class TreeDetector():
     def __init__(self, modelpath="train/unet.pt",
-        kmeanspath="train/kmeans.p", channels=3):
+        kmeanspath="train/kmeans.p", channels=3, HSV=True):
+        self.toHSV = HSV
         self.device = "cuda" if T.cuda.is_available() else "cpu"
         self.unet = Unet(colorchs=channels)
         self.unet.load_state_dict(
@@ -18,7 +21,7 @@ class TreeDetector():
                 self.cluster = pickle.load(fp)
         self.targetcluster = 2
 
-    def convert(self, X, toHSV=True):
+    def convert(self, X):
         if len(X.shape) == 3:
             X = X[None]
         if type(X) == type(np.array([])):
@@ -27,7 +30,7 @@ class TreeDetector():
             X = T.from_numpy(X)
         elif X.max() > 1:
             X = X.float() / 255
-        if toHSV:
+        if self.toHSV:
             X = T.from_numpy(rgb_to_hsv(X)) * 255
 
         if self.cluster is not None:
@@ -58,7 +61,16 @@ if __name__ == '__main__':
     modelpath = "treecontroller/tree-control-stuff/unet.pt"
     kmeanspath = "treecontroller/tree-control-stuff/kmeans.pickle"
     
+    is_rgb = "-resnet" in sys.argv
     detector = TreeDetector(modelpath, kmeanspath)
+
+    blur = None
+    if "blur3" in sys.argv:
+        blurkernel = T.tensor([[[[1,2,1],[2,4,2], [1,2,1]]]*1]*3).float()/16
+        blur = lambda x: F.conv2d(x, blurkernel, padding=1, groups=3)
+    if "blur5" in sys.argv:
+        blurkernel = T.tensor([[[[1,4,6,4,1], [4,16,24,16,4], [6,24,36,24,6], [4,16,24,16,4], [1,4,6,4,1]]]*1]*3).float()/256
+        blur = lambda x: F.conv2d(x, blurkernel, padding=2, groups=3)
 
     # Video setup
     videopaths = [
@@ -84,7 +96,12 @@ if __name__ == '__main__':
             RGB = cv2.cvtColor(BGR, cv2.COLOR_BGR2RGB)
 
             # GENERATE SEGMENTATION FOR RGB FRAMES
-            mask, _, _ = detector.convert(RGB)
+            if blur is not None:
+                blurred = blur(T.from_numpy(RGB)[None].float()).squeeze().numpy().astype(np.uint8)
+                mask, _, _ = detector.convert(blurred)
+            else:
+                mask, _, _ = detector.convert(RGB)
+                
             mask = mask.cpu().numpy()
 
             # Make visuals
