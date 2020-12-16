@@ -50,7 +50,7 @@ class Handler():
                 self.data_path = f"./isy_minerl/segm/data/split/tree-chop/{self.data_args}/"
             else:
                 self.data_path = f"./data/split/tree-chop/{self.data_args}/"
-        self.arg_path = f"{'resnet-' if args.resnet else ''}{'blur'+str(args.blur) if args.blur else ''}"+self.data_args +"/"
+        self.arg_path = f"{'resnet-' if args.resnet else ''}{'blur'+str(args.blur)+'-' if args.blur else ''}"+self.data_args +"/"
         print("model path:", self.arg_path)
         if args.integrated:
             self.result_path = f"./isy_minerl/segm/results/Critic/"+ args.name+ "-"+ self.arg_path
@@ -83,7 +83,14 @@ class Handler():
         data_collector = self.collect_discounted_dataset if self.args.discounted else self.collect_split_dataset
         
         if args.blur:
-            blur = nn.AvgPool2d(args.blur, 1, 1)
+            #blur = nn.AvgPool2d(args.blur, 1, 1)
+            if args.blur==3:
+                blurkernel = T.tensor([[[[1,2,1],[2,4,2], [1,2,1]]]*1]*3).float()/16
+                blur = lambda x: F.conv2d(x, blurkernel, padding=1, groups=3)
+            if args.blur ==5:
+                blurkernel = T.tensor([[[[1,4,6,4,1], [4,16,24,16,4], [6,24,36,24,6], [4,16,24,16,4], [1,4,6,4,1]]]*1]*3).float()/256
+                blur = lambda x: F.conv2d(x, blurkernel, padding=2, groups=3)
+
 
         print("loading data:", data_path)
         # TRAIN
@@ -102,7 +109,9 @@ class Handler():
         with gzip.open(data_path+file_name, "rb") as fp:
            self.X, self.Y = pickle.load(fp)
            if args.blur:
+               self.X = np.swapaxes(self.X, 1,-1)
                self.X = blur(T.from_numpy(self.X).float()).numpy().astype(np.uint8)
+               self.X = np.swapaxes(self.X, 1,-1)
                print(self.X.shape)
                
         self.dataloader = T.utils.data.DataLoader(T.utils.data.TensorDataset(T.from_numpy(self.X), T.from_numpy(self.Y), T.arange(self.X.shape[0], dtype=T.uint8)), batch_size=batch_size, shuffle=True)
@@ -112,7 +121,9 @@ class Handler():
         with gzip.open(data_path+"test-"+file_name, "rb") as fp:
             self.XX, self.YY = pickle.load(fp)
             if args.blur:
+                self.XX = np.swapaxes(self.XX, 1,-1)
                 self.XX = blur(T.from_numpy(self.XX).float()).numpy().astype(np.uint8)
+                self.XX = np.swapaxes(self.XX, 1,-1)
                 print(self.XX.shape)
         self.testdataloader = T.utils.data.DataLoader(T.utils.data.TensorDataset(T.from_numpy(self.XX), T.from_numpy(self.YY), T.arange(self.XX.shape[0], dtype=T.uint8)), batch_size=300, shuffle=False)
         self.testsize = self.XX.shape[0]

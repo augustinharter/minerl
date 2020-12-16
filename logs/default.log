@@ -5580,3 +5580,99 @@ AttributeError: 'numpy.ndarray' object has no attribute 'numpy'
 2020-12-16 21:04:31,672 INFO root critic e7 b0 loss: 0.001258798991329968
 2020-12-16 21:04:34,154 INFO root critic e8 b0 loss: 0.0014726541703566909
 2020-12-16 21:04:36,546 INFO root critic e9 b0 loss: 0.0008815221954137087
+2020-12-16 22:19:56,473 ERROR root Exception occured:Calculated padded input size per channel: (3 x 3). Kernel size: (4 x 4). Kernel size can't be greater than actual input size
+Traceback (most recent call last):
+  File "TrainHandler.py", line 907, in <module>
+    H.critic_pipe(mode="train")
+  File "TrainHandler.py", line 181, in critic_pipe
+    pred = critic(XP).squeeze()
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/module.py", line 541, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/augo/uni/minerl/nets.py", line 143, in forward
+    return self.enc(X)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/module.py", line 541, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/container.py", line 92, in forward
+    input = module(input)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/module.py", line 541, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/conv.py", line 345, in forward
+    return self.conv2d_forward(input, self.weight)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/conv.py", line 342, in conv2d_forward
+    self.padding, self.dilation, self.groups)
+RuntimeError: Calculated padded input size per channel: (3 x 3). Kernel size: (4 x 4). Kernel size can't be greater than actual input size
+2020-12-16 22:20:43,013 INFO root critic e0 b0 loss: 4.398756504058838
+2020-12-16 22:20:43,303 INFO root critic e1 b0 loss: 0.7298992872238159
+2020-12-16 22:20:43,574 INFO root critic e2 b0 loss: 1.414559006690979
+2020-12-16 22:20:43,857 INFO root critic e3 b0 loss: 1.2528984546661377
+2020-12-16 22:20:44,134 INFO root critic e4 b0 loss: 0.6973924040794373
+2020-12-16 22:20:44,420 INFO root critic e5 b0 loss: 0.6333691477775574
+2020-12-16 22:20:44,756 INFO root critic e6 b0 loss: 0.6897128820419312
+2020-12-16 22:20:45,038 INFO root critic e7 b0 loss: 0.7025262713432312
+2020-12-16 22:20:45,306 INFO root critic e8 b0 loss: 0.6174935102462769
+2020-12-16 22:20:45,584 INFO root critic e9 b0 loss: 0.5555812120437622
+2020-12-16 22:20:46,440 ERROR root Exception occured:too many indices for array
+Traceback (most recent call last):
+  File "TrainHandler.py", line 911, in <module>
+    H.segment(mode="train")
+  File "TrainHandler.py", line 500, in segment
+    log1 = log[:10*end,0]
+IndexError: too many indices for array
+2020-12-16 22:23:47,612 INFO root critic e0 b0 loss: 7.006014347076416
+2020-12-16 22:23:47,907 INFO root critic e1 b0 loss: 1.6212645769119263
+2020-12-16 22:23:48,207 INFO root critic e2 b0 loss: 2.3856024742126465
+2020-12-16 22:23:48,568 INFO root critic e3 b0 loss: 1.2577686309814453
+2020-12-16 22:23:48,938 INFO root critic e4 b0 loss: 0.7216245532035828
+2020-12-16 22:23:49,318 INFO root critic e5 b0 loss: 0.7634398937225342
+2020-12-16 22:23:49,709 INFO root critic e6 b0 loss: 0.7908328771591187
+2020-12-16 22:23:50,030 INFO root critic e7 b0 loss: 0.5249074697494507
+2020-12-16 22:23:50,305 INFO root critic e8 b0 loss: 0.4713557958602905
+2020-12-16 22:23:50,573 INFO root critic e9 b0 loss: 0.4222429394721985
+2020-12-16 22:25:23,207 INFO root critic e0 b0 loss: 2.1391780376434326
+2020-12-16 22:25:23,531 INFO root critic e1 b0 loss: 0.7506402134895325
+2020-12-16 22:25:23,834 INFO root critic e2 b0 loss: 0.6719715595245361
+2020-12-16 22:25:24,142 INFO root critic e3 b0 loss: 0.7861013412475586
+2020-12-16 22:25:24,434 INFO root critic e4 b0 loss: 0.5695365071296692
+2020-12-16 22:25:24,744 INFO root critic e5 b0 loss: 0.6308331489562988
+2020-12-16 22:25:25,059 INFO root critic e6 b0 loss: 0.6734825968742371
+2020-12-16 22:25:25,383 INFO root critic e7 b0 loss: 0.6340692639350891
+2020-12-16 22:25:25,692 INFO root critic e8 b0 loss: 0.5729652047157288
+2020-12-16 22:25:25,989 INFO root critic e9 b0 loss: 0.5811538696289062
+2020-12-16 22:25:26,900 ERROR root Exception occured:too many indices for array
+Traceback (most recent call last):
+  File "TrainHandler.py", line 911, in <module>
+    H.segment(mode="train")
+  File "TrainHandler.py", line 500, in segment
+    log1 = log[:10*end,0]
+IndexError: too many indices for array
+2020-12-16 22:29:41,036 ERROR root Exception occured:Calculated padded input size per channel: (3 x 3). Kernel size: (4 x 4). Kernel size can't be greater than actual input size
+Traceback (most recent call last):
+  File "TrainHandler.py", line 911, in <module>
+    H.critic_pipe(mode="train")
+  File "TrainHandler.py", line 185, in critic_pipe
+    pred = critic(XP).squeeze()
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/module.py", line 541, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/augo/uni/minerl/nets.py", line 143, in forward
+    return self.enc(X)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/module.py", line 541, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/container.py", line 92, in forward
+    input = module(input)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/module.py", line 541, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/conv.py", line 345, in forward
+    return self.conv2d_forward(input, self.weight)
+  File "/home/augo/anaconda3/envs/minerl/lib/python3.7/site-packages/torch/nn/modules/conv.py", line 342, in conv2d_forward
+    self.padding, self.dilation, self.groups)
+RuntimeError: Calculated padded input size per channel: (3 x 3). Kernel size: (4 x 4). Kernel size can't be greater than actual input size
+2020-12-16 22:30:38,977 INFO root critic e0 b0 loss: 0.7605105042457581
+2020-12-16 22:30:39,297 INFO root critic e1 b0 loss: 0.665690541267395
+2020-12-16 22:30:39,620 INFO root critic e2 b0 loss: 0.631830632686615
+2020-12-16 22:30:39,938 INFO root critic e3 b0 loss: 0.5665301084518433
+2020-12-16 22:30:40,284 INFO root critic e4 b0 loss: 0.5564233660697937
+2020-12-16 22:30:40,595 INFO root critic e5 b0 loss: 0.49312761425971985
+2020-12-16 22:30:40,980 INFO root critic e6 b0 loss: 0.4755505919456482
+2020-12-16 22:30:41,464 INFO root critic e7 b0 loss: 0.4367125332355499
+2020-12-16 22:30:41,811 INFO root critic e8 b0 loss: 0.40529248118400574
+2020-12-16 22:30:42,248 INFO root critic e9 b0 loss: 0.3678622841835022
