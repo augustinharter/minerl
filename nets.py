@@ -268,13 +268,12 @@ class ResNetCritic(nn.Module):
         )
 
     def forward(self, X):
+        device = X.device
         if X.max()>1:
             X = X/255.0
-        X = np.swapaxes(X.numpy(),1,-1)
-        if self.HSV:
-            X = hsv_to_rgb(X)
+        X = X.permute(0,2,3,1)
         X = self.norm(X)
-        X = T.from_numpy(np.swapaxes(X, 1, -1)).float()
+        X = X.permute(0,3,1,2)
         features = self.resnet(X)
         return self.head(features)
 
