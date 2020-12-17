@@ -61,16 +61,18 @@ if __name__ == '__main__':
     modelpath = "treecontroller/tree-control-stuff/unet.pt"
     kmeanspath = "treecontroller/tree-control-stuff/kmeans.pickle"
     
-    is_rgb = "-resnet" in sys.argv
-    detector = TreeDetector(modelpath, kmeanspath)
-
     blur = None
     if "blur3" in sys.argv:
         blurkernel = T.tensor([[[[1,2,1],[2,4,2], [1,2,1]]]*1]*3).float()/16
         blur = lambda x: F.conv2d(x, blurkernel, padding=1, groups=3)
+        modelpath = "treecontroller/tree-control-stuff/unet-blur3.pt"
     if "blur5" in sys.argv:
         blurkernel = T.tensor([[[[1,4,6,4,1], [4,16,24,16,4], [6,24,36,24,6], [4,16,24,16,4], [1,4,6,4,1]]]*1]*3).float()/256
         blur = lambda x: F.conv2d(x, blurkernel, padding=2, groups=3)
+        modelpath = "treecontroller/tree-control-stuff/unet-blur5.pt"
+
+    detector = TreeDetector(modelpath, kmeanspath)
+
 
     # Video setup
     videopaths = [
@@ -79,7 +81,7 @@ if __name__ == '__main__':
         #"./data/MineRLTreechopVectorObf-v0/v3_alarming_arugula_medusa-12_58066-60565/recording.mp4",
         #"./data/MineRLTreechopVectorObf-v0/v3_content_squash_angel-3_11240-12783/recording.mp4"
     ]
-    videonames = ["live-01-segmented", "offline-01-segmented"]
+    videonames = ["live-01-segmented-new", "offline-01-segmented-new"]
     resultpath = "results/treedetect/"
 
     for vididx, videopath in enumerate(videopaths):
@@ -112,7 +114,7 @@ if __name__ == '__main__':
             combined = np.concatenate((BGR, overlay, 255*mask), axis=1).astype(np.uint8)
             #print(combined.shape)
             out.write(combined)
-        print(RGB.shape, np.max(RGB), RGB[0])
+        #print(RGB.shape, np.max(RGB), RGB[0])
         cap.release()
         cv2.destroyAllWindows()
     
