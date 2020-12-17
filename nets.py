@@ -259,6 +259,8 @@ class ResNetCritic(nn.Module):
         super().__init__()
         self.HSV = HSV
         self.norm = get_normalizer()
+        self.mean = T.tensor([0.485, 0.456, 0.406])
+        self.std = T.tensor([0.229, 0.224, 0.225])
         self.resnet = get_resnet18_features()
         self.head = nn.Sequential(
             nn.Flatten(),
@@ -272,7 +274,10 @@ class ResNetCritic(nn.Module):
         if X.max()>1:
             X = X/255.0
         X = X.permute(0,2,3,1)
-        X = self.norm(X)
+        if device != self.mean.device:
+            self.mean = self.mean.to(device)
+            self.std = self.std.to(device)
+        X = (X-self.mean)/self.std
         X = X.permute(0,3,1,2)
         features = self.resnet(X)
         return self.head(features)
@@ -290,7 +295,7 @@ def get_inceptionv3_features():
 
 def get_normalizer():
     #return transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    return lambda x: (x-np.array([0.485, 0.456, 0.406]))/np.array([0.229, 0.224, 0.225])
+    return lambda x: (x-T.tensor([0.485, 0.456, 0.406]))/T.tensor([0.229, 0.224, 0.225])
 
 if __name__ == "__main__":
     bignet = get_resnet18_features()
