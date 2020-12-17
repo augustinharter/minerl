@@ -204,7 +204,7 @@ class GroundedUnet(nn.Module):
         self.pool = nn.MaxPool2d(2)
         self.acti = activation()
         self.ups = nn.Upsample(scale_factor=(2,2))
-        self.down = lambda x: F.interpolate(x, scale_factor=0.5, mode="bilinear")
+        self.down = lambda x: F.interpolate(x, scale_factor=0.5, mode="bilinear", align_corners=False)
         self.enc = [
             nn.Conv2d(colorchs,edims[0],3,1,1),
             nn.Conv2d(3+edims[0],edims[1],3,1,1),

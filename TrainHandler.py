@@ -33,7 +33,7 @@ class Handler():
         print("device:", self.device)
         if args.resnet:
             self.critic = ResNetCritic().to(self.device)
-            #args.color = "RGB"
+            args.color = "RGB"
         else:
             self.critic = Critic(end=[] if not args.sigmoid else [nn.Sigmoid()], colorchs= args.clustercritic+3 if args.clustercritic else 3).to(self.device)
         if args.grounded:
