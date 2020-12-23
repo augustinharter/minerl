@@ -718,9 +718,11 @@ class Handler():
         patched_ywid = patches.shape[1]
         embeds = np.zeros(patches.shape[:3]+(self.args.embed_dim,))
         for p in range(len(embeds)):
+            print(f"embedding patches  of frame {p} out of {len(embeds)}", end='\r')
             for y in range(patched_ywid):
                 for x in range(patched_xwid):
                     embeds[p, y, x] = self.embed_patch(patches[p,y,x])
+        print()
         return embeds
     
     def create_patch_embedding_clusters(self):
@@ -731,7 +733,7 @@ class Handler():
         embed_dim = self.args.embed_dim
         n_clusters = self.args.embed_cluster
         reward_idx = 4
-        n_samples = 300
+        n_samples = self.args.embed_train_samples
 
         # REAL DATASET
         if not args.dummy:
@@ -1318,6 +1320,7 @@ if __name__ == "__main__":
     parser.add_argument("--cons", type=int, default=250)
     parser.add_argument("--embed-dim", type=int, default=100)
     parser.add_argument("--embed-cluster", type=int, default=10)
+    parser.add_argument("--embed-train-samples", type=int, default=300)
     parser.add_argument("--color", type=str, default="HSV")
     parser.add_argument("--name", type=str, default="default")
     args = parser.parse_args()
