@@ -5829,3 +5829,42 @@ Traceback (most recent call last):
 RuntimeError: Expected object of scalar type Double but got scalar type Float for argument #2 'weight' in call to _thnn_conv2d_forward
 2020-12-17 00:34:05,274 INFO root critic e0 b0 loss: 0.6995505094528198
 2020-12-17 00:34:07,878 INFO root critic e1 b0 loss: 0.17246995866298676
+2020-12-22 11:23:28,975 INFO minerl.data.download Downloading experiment MineRLNavigateVectorObf-v0 to ./data
+2020-12-22 11:23:28,978 INFO minerl.data.download Fetching download hash ...
+2020-12-22 11:23:28,978 WARNING minerl.data.download As of MineRL 0.3.0 automatic hash checking has been disabled.
+2020-12-22 11:23:28,978 INFO minerl.data.download Starting download ...
+2020-12-22 11:25:32,402 INFO root Success - downloaded ./data/download/v3/MineRLNavigateVectorObf-v0.tar
+2020-12-22 11:25:32,402 INFO root Extracting downloaded files - this may take some time
+2020-12-22 11:25:34,496 INFO root Success - extracted files to ./data
+2020-12-22 11:26:26,355 INFO minerl.data.download Downloading experiment MineRLNavigateVectorObf-v0 to ./data
+2020-12-22 11:26:26,355 WARNING minerl.data.download ./data/MineRLNavigateVectorObf-v0 exists - skipping re-download!
+2020-12-22 11:27:13,974 INFO minerl.data.download Downloading experiment MineRLNavigateVectorObf-v0 to ./data
+2020-12-22 11:27:13,975 WARNING minerl.data.download ./data/MineRLNavigateVectorObf-v0 exists - skipping re-download!
+2020-12-22 11:28:46,761 INFO minerl.data.download Downloading experiment MineRLNavigateVectorObf-v0 to ./data
+2020-12-22 11:28:46,761 WARNING minerl.data.download ./data/MineRLNavigateVectorObf-v0 exists - skipping re-download!
+2020-12-22 11:29:45,866 INFO minerl.data.download Downloading experiment MineRLNavigateVectorObf-v0 to ./data
+2020-12-22 11:29:45,866 WARNING minerl.data.download ./data/MineRLNavigateVectorObf-v0 exists - skipping re-download!
+2020-12-22 11:31:22,603 INFO minerl.data.download Downloading experiment MineRLNavigateVectorObf-v0 to ./data
+2020-12-22 11:31:22,603 WARNING minerl.data.download ./data/MineRLNavigateVectorObf-v0 exists - skipping re-download!
+2020-12-22 11:34:55,355 INFO minerl.data.download Downloading experiment MineRLNavigateVectorObf-v0 to ./data
+2020-12-22 11:34:55,358 WARNING minerl.data.download ./data/MineRLNavigateVectorObf-v0 exists - skipping re-download!
+2020-12-22 11:36:48,007 INFO minerl.data.download Downloading experiment MineRLNavigateVectorObf-v0 to ./data
+2020-12-22 11:36:48,010 WARNING minerl.data.download ./data/MineRLNavigateVectorObf-v0 exists - skipping re-download!
+2020-12-22 11:39:02,131 INFO minerl.data.download Downloading experiment MineRLNavigateVectorObf-v0 to ./data
+2020-12-22 11:39:02,134 WARNING minerl.data.download ./data/MineRLNavigateVectorObf-v0 exists - skipping re-download!
+2020-12-22 11:40:02,488 INFO minerl.data.download Downloading experiment MineRLNavigateVectorObf-v0 to ./data
+2020-12-22 11:40:02,488 WARNING minerl.data.download ./data/MineRLNavigateVectorObf-v0 exists - skipping re-download!
+2020-12-22 11:41:27,562 INFO minerl.data.download Downloading experiment MineRLNavigateVectorObf-v0 to ./data
+2020-12-22 11:41:27,562 WARNING minerl.data.download ./data/MineRLNavigateVectorObf-v0 exists - skipping re-download!
+2020-12-22 13:30:47,081 WARNING matplotlib.image Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers).
+2020-12-22 13:30:47,087 WARNING matplotlib.image Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers).
+2020-12-22 13:30:47,091 WARNING matplotlib.image Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers).
+2020-12-22 13:30:47,095 WARNING matplotlib.image Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers).
+2020-12-22 13:30:47,100 WARNING matplotlib.image Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers).
+2020-12-22 13:30:47,104 WARNING matplotlib.image Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers).
+2020-12-22 13:30:47,108 WARNING matplotlib.image Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers).
+2020-12-22 13:30:47,111 WARNING matplotlib.image Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers).
+2020-12-22 13:30:47,115 WARNING matplotlib.image Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers).
+2020-12-22 13:30:47,119 WARNING matplotlib.image Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers).
+2020-12-22 15:58:35,043 INFO minerl.data.download Downloading experiment MineRLNavigateVectorObf-v0 to ./data
+2020-12-22 15:58:35,047 WARNING minerl.data.download ./data/MineRLNavigateVectorObf-v0 exists - skipping re-download!

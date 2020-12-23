@@ -9,7 +9,7 @@ import sys
 
 class TreeDetector():
     def __init__(self, modelpath="train/unet.pt",
-        kmeanspath="train/kmeans.p", channels=3, HSV=True, grounded=False):
+        kmeanspath="train/kmeans.p", channels=3, HSV=True, grounded=False, blur=0):
         self.toHSV = HSV
         self.device = "cuda" if T.cuda.is_available() else "cpu"
         if grounded:
@@ -24,6 +24,14 @@ class TreeDetector():
                 self.cluster = pickle.load(fp)
         self.targetcluster = 2
 
+        self.blur = None
+        if blur==5:
+            blurkernel = T.tensor([[[[1,4,6,4,1], [4,16,24,16,4], [6,24,36,24,6], [4,16,24,16,4], [1,4,6,4,1]]]*1]*3).float()/256
+            self.blur = lambda x: F.conv2d(x, blurkernel, padding=2, groups=3)
+        if blur==3:
+            blurkernel = T.tensor([[[[1,2,1],[2,4,2], [1,2,1]]]*1]*3).float()/16
+            self.blur = lambda x: F.conv2d(x, blurkernel, padding=1, groups=3)
+
     def convert(self, X):
         if len(X.shape) == 3:
             X = X[None]
@@ -37,6 +45,12 @@ class TreeDetector():
             X = T.from_numpy(rgb_to_hsv(X)) * 255
         else:
             X *= 255
+
+        if self.blur is not None:
+            #blurred = np.swapaxes(RGB,0,-1)
+            #blurred = blur(T.from_numpy(blurred)[None].float())[0].numpy().astype(np.uint8)
+            X = self.blur(X)
+            #blurred = np.swapaxes(blurred,0,-1)
 
         if self.cluster is not None:
             #print(X.shape)
@@ -64,22 +78,17 @@ class TreeDetector():
 
 if __name__ == '__main__':
     # Detector Setup
-    modelpath = "treecontroller/tree-control-stuff/unet.pt"
+    unetpath = "treecontroller/tree-control-stuff/unet.pt"
     kmeanspath = "treecontroller/tree-control-stuff/kmeans.pickle"
     
-    blur = None
     if "-blur3" in sys.argv:
-        blurkernel = T.tensor([[[[1,2,1],[2,4,2], [1,2,1]]]*1]*3).float()/16
-        blur = lambda x: F.conv2d(x, blurkernel, padding=1, groups=3)
-        modelpath = "treecontroller/tree-control-stuff/unet-blur3.pt"
+        unetpath = "treecontroller/tree-control-stuff/unet-blur3.pt"
     if "-blur5" in sys.argv:
-        blurkernel = T.tensor([[[[1,4,6,4,1], [4,16,24,16,4], [6,24,36,24,6], [4,16,24,16,4], [1,4,6,4,1]]]*1]*3).float()/256
-        blur = lambda x: F.conv2d(x, blurkernel, padding=2, groups=3)
-        modelpath = "treecontroller/tree-control-stuff/unet-blur5.pt"
+        unetpath = "treecontroller/tree-control-stuff/unet-blur5.pt"
     if "-grounded" in sys.argv:
-        modelpath = "treecontroller/tree-control-stuff/unet-grounded.pt"
+        unetpath = "treecontroller/tree-control-stuff/unet-grounded.pt"
 
-    detector = TreeDetector(modelpath, kmeanspath, grounded="-grounded" in sys.argv, HSV=not "-resnet" in sys.argv)
+    detector = TreeDetector(unetpath, kmeanspath, grounded="-grounded" in sys.argv, HSV=not "-resnet" in sys.argv)
 
 
     # Video setup
@@ -106,15 +115,7 @@ if __name__ == '__main__':
             RGB = cv2.cvtColor(BGR, cv2.COLOR_BGR2RGB)
 
             # GENERATE SEGMENTATION FOR RGB FRAMES
-            if blur is not None:
-                blurred = np.swapaxes(RGB,0,-1)
-                blurred = blur(T.from_numpy(blurred)[None].float())[0].numpy().astype(np.uint8)
-                blurred = np.swapaxes(blurred,0,-1)
-                #print(blurred.shape)
-                mask, _, _ = detector.convert(blurred)
-            else:
-                #print(RGB.shape)
-                mask, _, _ = detector.convert(RGB)
+            mask, _, _ = detector.convert(RGB)
                 
             mask = mask.cpu().numpy()
 
