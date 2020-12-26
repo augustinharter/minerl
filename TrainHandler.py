@@ -71,7 +71,7 @@ class Handler():
             self.font = ImageFont.truetype("./isy_minerl/segm/etc/Ubuntu-R.ttf", 9)
         else:
             self.embed_data_path = f"saves/patchembed/"
-            self.embed_data_args = f"cl{args.embed_cluster}-dim{args.embed_dim}"
+            self.embed_data_args = f"cl{args.embed_cluster}-dim{args.embed_dim}-ds{args.embed_train_samples}"
             self.unetname = f"unet-l2_{args.L2}-l1_{args.L1}"
             self.save_path = f"./saves/Critic/"+self.arg_path
             self.font = ImageFont.truetype("/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf", 8)
