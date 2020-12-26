@@ -33,7 +33,7 @@ class Handler():
         print("device:", self.device)
         if args.resnet:
             self.critic = ResNetCritic().to(self.device)
-            #args.color = "RGB"
+            args.color = "RGB"
         else:
             self.critic = Critic(end=[] if not args.sigmoid else [nn.Sigmoid()], colorchs= args.clustercritic+3 if args.clustercritic else 3).to(self.device)
         if args.grounded:
@@ -213,7 +213,7 @@ class Handler():
                         order2 = Y.argsort(descending=True)
                     if trainf:
                         L.info(f"critic e{epoch} b{b_idx} loss: {loss.item()}")
-                    viz = hsv_to_rgb(X.numpy()/255) if self.args.color == "HSV" else X[order].numpy()/255
+                    viz = hsv_to_rgb(X.numpy()/255) if self.args.color == "HSV" else X.numpy()/255
                     viz = np.concatenate(viz, axis=1)
                     vizs.append(viz)
                     for chi in range(args.clustercritic):

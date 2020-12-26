@@ -5829,3 +5829,10 @@ Traceback (most recent call last):
 RuntimeError: Expected object of scalar type Double but got scalar type Float for argument #2 'weight' in call to _thnn_conv2d_forward
 2020-12-17 00:34:05,274 INFO root critic e0 b0 loss: 0.6995505094528198
 2020-12-17 00:34:07,878 INFO root critic e1 b0 loss: 0.17246995866298676
+2020-12-17 12:08:08,422 ERROR root Exception occured:'Namespace' object has no attribute 'viz'
+Traceback (most recent call last):
+  File "TrainHandler.py", line 935, in <module>
+    H.cluster(mode="train")
+  File "TrainHandler.py", line 619, in cluster
+    if b_idx <10 and args.viz: #"VISUALIZE"
+AttributeError: 'Namespace' object has no attribute 'viz'
