@@ -1,6 +1,6 @@
 import torch as T
 import torch.nn.functional as F
-from nets import Unet
+from nets import Unet, GroundedUnet
 import numpy as np
 from matplotlib.colors import rgb_to_hsv
 import pickle
@@ -9,10 +9,13 @@ import sys
 
 class TreeDetector():
     def __init__(self, modelpath="train/unet.pt",
-        kmeanspath="train/kmeans.p", channels=3, HSV=True):
+        kmeanspath="train/kmeans.p", channels=3, HSV=True, grounded=False, blur=0):
         self.toHSV = HSV
         self.device = "cuda" if T.cuda.is_available() else "cpu"
-        self.unet = Unet(colorchs=channels)
+        if grounded:
+            self.unet = GroundedUnet(colorchs=channels)
+        else:
+            self.unet = Unet(colorchs=channels)
         self.unet.load_state_dict(
             T.load(modelpath, map_location=T.device(self.device)))
         if kmeanspath:
@@ -20,6 +23,14 @@ class TreeDetector():
                 #self.cluster, self.targetcluster = pickle.load(fp)
                 self.cluster = pickle.load(fp)
         self.targetcluster = 2
+
+        self.blur = None
+        if blur==5:
+            blurkernel = T.tensor([[[[1,4,6,4,1], [4,16,24,16,4], [6,24,36,24,6], [4,16,24,16,4], [1,4,6,4,1]]]*1]*3).float()/256
+            self.blur = lambda x: F.conv2d(x, blurkernel, padding=2, groups=3)
+        if blur==3:
+            blurkernel = T.tensor([[[[1,2,1],[2,4,2], [1,2,1]]]*1]*3).float()/16
+            self.blur = lambda x: F.conv2d(x, blurkernel, padding=1, groups=3)
 
     def convert(self, X):
         if len(X.shape) == 3:
@@ -32,10 +43,19 @@ class TreeDetector():
             X = X.float() / 255
         if self.toHSV:
             X = T.from_numpy(rgb_to_hsv(X)) * 255
+        else:
+            X *= 255
+
+        if self.blur is not None:
+            #blurred = np.swapaxes(RGB,0,-1)
+            #blurred = blur(T.from_numpy(blurred)[None].float())[0].numpy().astype(np.uint8)
+            X = self.blur(X)
+            #blurred = np.swapaxes(blurred,0,-1)
 
         if self.cluster is not None:
-            pixels = X.view(-1, 3)
-            test = pixels.view(X.shape)
+            #print(X.shape)
+            pixels = X.reshape(-1, 3)
+            test = pixels.reshape(X.shape)
             assert (X == test).all()
             pixels = pixels[:, [0, 1]].float() / 255
             pixels[:, 1] *= 0.1
@@ -58,36 +78,33 @@ class TreeDetector():
 
 if __name__ == '__main__':
     # Detector Setup
-    modelpath = "treecontroller/tree-control-stuff/unet.pt"
+    unetpath = "treecontroller/tree-control-stuff/unet.pt"
     kmeanspath = "treecontroller/tree-control-stuff/kmeans.pickle"
     
-    blur = None
-    if "blur3" in sys.argv:
-        blurkernel = T.tensor([[[[1,2,1],[2,4,2], [1,2,1]]]*1]*3).float()/16
-        blur = lambda x: F.conv2d(x, blurkernel, padding=1, groups=3)
-        modelpath = "treecontroller/tree-control-stuff/unet-blur3.pt"
-    if "blur5" in sys.argv:
-        blurkernel = T.tensor([[[[1,4,6,4,1], [4,16,24,16,4], [6,24,36,24,6], [4,16,24,16,4], [1,4,6,4,1]]]*1]*3).float()/256
-        blur = lambda x: F.conv2d(x, blurkernel, padding=2, groups=3)
-        modelpath = "treecontroller/tree-control-stuff/unet-blur5.pt"
+    if "-blur3" in sys.argv:
+        unetpath = "treecontroller/tree-control-stuff/unet-blur3.pt"
+    if "-blur5" in sys.argv:
+        unetpath = "treecontroller/tree-control-stuff/unet-blur5.pt"
+    if "-grounded" in sys.argv:
+        unetpath = "treecontroller/tree-control-stuff/unet-grounded.pt"
 
-    detector = TreeDetector(modelpath, kmeanspath)
+    detector = TreeDetector(unetpath, kmeanspath, grounded="-grounded" in sys.argv, HSV=not "-resnet" in sys.argv)
 
 
     # Video setup
     videopaths = [
-        "live-clip-01.avi",
+        "./eval/live-clip-01.avi",
         "./data/MineRLTreechopVectorObf-v0/v3_agonizing_kale_tree_nymph-7_72884-74584/recording.mp4",
         #"./data/MineRLTreechopVectorObf-v0/v3_alarming_arugula_medusa-12_58066-60565/recording.mp4",
         #"./data/MineRLTreechopVectorObf-v0/v3_content_squash_angel-3_11240-12783/recording.mp4"
     ]
-    videonames = ["live-01-segmented-new", "offline-01-segmented-new"]
+    videonames = [f"live-01-segmented-{sys.argv[1]}", f"offline-01-segmented-{sys.argv[1]}"]
     resultpath = "results/treedetect/"
 
     for vididx, videopath in enumerate(videopaths):
         cap = cv2.VideoCapture(videopath)
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        out = cv2.VideoWriter(videonames[vididx]+'.avi',fourcc, 20.0, (64*3,64))
+        out = cv2.VideoWriter("./eval/"+videonames[vididx]+'.avi',fourcc, 20.0, (64*3,64))
         #print(cap.attributes_)
  
         while(True):
@@ -98,11 +115,7 @@ if __name__ == '__main__':
             RGB = cv2.cvtColor(BGR, cv2.COLOR_BGR2RGB)
 
             # GENERATE SEGMENTATION FOR RGB FRAMES
-            if blur is not None:
-                blurred = blur(T.from_numpy(RGB)[None].float()).squeeze().numpy().astype(np.uint8)
-                mask, _, _ = detector.convert(blurred)
-            else:
-                mask, _, _ = detector.convert(RGB)
+            mask, _, _ = detector.convert(RGB)
                 
             mask = mask.cpu().numpy()
 

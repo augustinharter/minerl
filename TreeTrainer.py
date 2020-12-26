@@ -36,7 +36,9 @@ class Arguments():
     warmup = 20
     gamma = 0.95
     revgamma = 1.1
+    trajsize = 50
     datasize = 20000
+    testsize = 300
     workers = (4,16,4)
     chunksize = 20
     cons = 350
