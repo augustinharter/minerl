@@ -22,6 +22,7 @@ import math
 from PIL import Image, ImageDraw, ImageFont
 from torchvision import transforms
 import torchvision as tv
+from PatchEmbedder import PatchEmbedder
 
 
 class Handler():
@@ -674,56 +675,6 @@ class Handler():
                 print(key, cdict[key].shape)
                 with gzip.GzipFile(self.data_path+f"{mode}-{key}-cluster", 'wb') as fp:
                     pickle.dump(cdict[key], fp)
-
-    def embed_patch(self, patchpixels):
-        step_faktor = round(math.sqrt(self.args.embed_dim))
-        # CALC INDEXES
-        refactored_pixels = patchpixels[:,0]*step_faktor + patchpixels[:,1]
-
-        # HIST EMBEDDINGS
-        #embeds = np.zeros((patches.shape[0], embed_dim))
-        #for idx in range(len(embeds)):
-        #    embed = np.histogram(refactored_patches, bins=np.linspace(0,10,embed_dim+1))[0]
-        #    embeds[idx] = embed.astype(np.float)/np.sum(embed)
-
-        embed = np.histogram(refactored_pixels, bins=np.linspace(0,10,self.args.embed_dim+1))[0]
-        return embed
-
-    def make_patches(self, x, w, stride):
-        if not stride:
-            stride = w
-
-        #xpad = math.ceil(x.shape[2]/w)*w - x.shape[2]
-        #ypad = math.ceil(x.shape[1]/w)*w - x.shape[1]
-        #padding =  [(0,0), (math.ceil(ypad/2), ypad//2),(math.ceil(xpad/2), xpad//2), (0,0)]
-        #if type(x)==type(np.array([])):
-        #    x = np.pad(x,padding, mode="edge")
-        #else:
-        #    print("ERROR | didnt receive np-array!")
-
-        all_tiles = []
-        for sample in x:
-            tiles = [sample[stride*i:stride*i+w,stride*j:stride*j+w] 
-                for i in range(1+(sample.shape[0]-w)//stride)
-                for j in range(1+(sample.shape[1]-w)//stride)]
-            tiles = np.stack(tiles, axis=0)
-            all_tiles.append(tiles)
-        patches = np.stack(all_tiles, axis=0)
-        patched_width = int(math.sqrt(patches.shape[1]))
-        patches = patches.reshape(patches.shape[0], patched_width, patched_width, w, w, 3)
-        return patches
-
-    def embed_patches(self, patches):
-        patched_xwid = patches.shape[2]
-        patched_ywid = patches.shape[1]
-        embeds = np.zeros(patches.shape[:3]+(self.args.embed_dim,))
-        for p in range(len(embeds)):
-            print(f"embedding patches  of frame {p} out of {len(embeds)}", end='\r')
-            for y in range(patched_ywid):
-                for x in range(patched_xwid):
-                    embeds[p, y, x] = self.embed_patch(patches[p,y,x])
-        print()
-        return embeds
     
     def create_patch_embedding_clusters(self):
         print("Starting to create patch embedding clusters with tree prob")
@@ -734,6 +685,8 @@ class Handler():
         n_clusters = self.args.embed_cluster
         reward_idx = 4
         n_samples = self.args.embed_train_samples
+
+        self.embedder = PatchEmbedder(embed_dim=embed_dim, n_cluster=n_clusters)
 
         # REAL DATASET
         if not args.dummy:
@@ -785,7 +738,7 @@ class Handler():
 
         # CREATE PATCHES
         print("creating patches...")
-        patches = self.make_patches(X, patchwid, stride)
+        patches = self.embedder.make_patches(X, patchwid, stride)
         print("patches shape and max:", patches.shape, np.max(patches))
         
         # VALIDATE PATCHING
@@ -795,7 +748,7 @@ class Handler():
 
         # CREATE EMBEDDINGS
         print("creating embeddings...")
-        embeds = self.embed_patches(patches)
+        embeds = self.embedder.embed_patches(patches, verbose=True)
 
         # CLUSTER EMBEDDING SPACE
         print("clustering embedding space...")
@@ -823,12 +776,12 @@ class Handler():
 
         # SAVE CLUSTERS AND PROBS
         print("cluster probs:", tree_probs)
-        self.patch_embed_kmeans = kmeans
-        self.patch_embed_cluster_tree_probs = tree_probs
+        self.embedder.patch_embed_kmeans = kmeans
+        self.embedder.patch_embed_cluster_tree_probs = tree_probs
 
         os.makedirs(self.embed_data_path, exist_ok=True)
         with open(self.embed_data_path+self.embed_data_args+".pickle", "wb") as fp:
-            pickle.dump((kmeans, tree_probs), fp)
+            pickle.dump((kmeans, tree_probs, self.args.embed_dim), fp)
 
         print("Finished creating patch embedding clusters with tree probs")
 
@@ -840,8 +793,8 @@ class Handler():
             self.create_patch_embedding_clusters()
         else:
             print("found clusters and probs...")
-            with open(embed_tuple_path, "rb") as fp:
-                self.patch_embed_kmeans, self.patch_embed_cluster_tree_probs = pickle.load(fp)
+            self.embedder = PatchEmbedder(self.args.embed_dim, self.args.embed_cluster)
+            self.embedder.load_embed_tuple(embed_tuple_path)
 
         # GET DATA
         if self.args.dummy:
@@ -853,11 +806,11 @@ class Handler():
             X = self.XX[:1000]/255
 
         # MAKE PATCHES
-        patches = self.make_patches(X, 8, 2)
+        patches = self.embedder.make_patches(X, 8, 2)
         print("patches shape:",patches.shape)
 
         # CALC PROBS
-        probs = self.calc_tree_probs_for_patches(patches)
+        probs = self.embedder.calc_tree_probs_for_patches(patches, verbose=True)
         print("probs shape:", probs.shape)
 
         resultdir = f"./results/patch-embed/{self.embed_data_args}/"
@@ -870,26 +823,6 @@ class Handler():
             #plt.show()
             plt.imsave(resultdir+f"{idx}.png", pic)
     
-    def calc_tree_probs_for_patches(self, patches):
-        embed_dim = self.args.embed_dim
-
-        # EMBED PATCHES
-        print("embedding patches...")
-        embeds = self.embed_patches(patches)
-        flat_embeds = embeds.reshape(-1, embed_dim)
-
-        # PREDICT EMBEDS
-        print("predicting cluster labels...")
-        flat_labels = self.patch_embed_kmeans.predict(flat_embeds)
-
-        # GET TREE PROB FOR LABELS
-        print("getting patch probs...")
-        cluster_probs = self.patch_embed_cluster_tree_probs/np.max(self.patch_embed_cluster_tree_probs)
-        flat_tree_probs = cluster_probs[flat_labels]
-        tree_probs = flat_tree_probs.reshape(embeds.shape[:3])
-        
-        return tree_probs 
-
     def collect_split_dataset(self, path, size=2000, wait=10, test=0, datadir="./results/stuff/"):
         args = self.args
         os.makedirs(datadir+"samples/", exist_ok=True)

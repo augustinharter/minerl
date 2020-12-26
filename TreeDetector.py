@@ -6,8 +6,10 @@ from matplotlib.colors import rgb_to_hsv
 import pickle
 import cv2
 import sys
+from PatchEmbedder import PatchEmbedder
+import os
 
-class TreeDetector():
+class UnetTreeDetector():
     def __init__(self, modelpath="train/unet.pt",
         kmeanspath="train/kmeans.p", channels=3, HSV=True, grounded=False, blur=0):
         self.toHSV = HSV
@@ -76,6 +78,26 @@ class TreeDetector():
         cluster_mask = (label_mask==0)[0]
         return mask, raw_mask, cluster_mask
 
+class PatchEmbedTreeDetector():
+    def __init__(self, embed_tuple_path="train/embed-data.pickle"):
+        super().__init__()
+        if not os.path.exists(embed_tuple_path):
+            print("ERROR no embed tuple found!")
+            exit()
+        else:
+            print("found embed tuple...")
+            self.embedder = PatchEmbedder()
+            self.embedder.load_kmeans_and_probs(embed_tuple_path)
+
+    def convert(self, X):
+        # MAKE PATCHES
+        patches = self.make_patches(X, 8, 2)
+        print("patches shape:",patches.shape)
+
+        # CALC PROBS
+        probs = self.calc_tree_probs_for_patches(patches)
+        print("probs shape:", probs.shape)
+
 if __name__ == '__main__':
     # Detector Setup
     unetpath = "treecontroller/tree-control-stuff/unet.pt"
@@ -88,8 +110,7 @@ if __name__ == '__main__':
     if "-grounded" in sys.argv:
         unetpath = "treecontroller/tree-control-stuff/unet-grounded.pt"
 
-    detector = TreeDetector(unetpath, kmeanspath, grounded="-grounded" in sys.argv, HSV=not "-resnet" in sys.argv)
-
+    detector = UnetTreeDetector(unetpath, kmeanspath, grounded="-grounded" in sys.argv, HSV=not "-resnet" in sys.argv)
 
     # Video setup
     videopaths = [
