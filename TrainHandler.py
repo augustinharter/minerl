@@ -222,7 +222,7 @@ class Handler():
                         order2 = Y.argsort(descending=True)
                     if trainf:
                         L.info(f"critic e{epoch} b{b_idx} loss: {loss.item()}")
-                    viz = hsv_to_rgb(X.numpy()/255) if self.args.color == "HSV" else X[order].numpy()/255
+                    viz = hsv_to_rgb(X.numpy()/255) if self.args.color == "HSV" else X.numpy()/255
                     viz = np.concatenate(viz, axis=1)
                     vizs.append(viz)
                     for chi in range(args.clustercritic):
