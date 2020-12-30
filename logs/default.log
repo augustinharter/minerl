@@ -5875,3 +5875,4 @@ AttributeError: 'Namespace' object has no attribute 'viz'
 2020-12-22 13:30:47,119 WARNING matplotlib.image Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers).
 2020-12-22 15:58:35,043 INFO minerl.data.download Downloading experiment MineRLNavigateVectorObf-v0 to ./data
 2020-12-22 15:58:35,047 WARNING minerl.data.download ./data/MineRLNavigateVectorObf-v0 exists - skipping re-download!
+2020-12-28 09:51:16,606 WARNING matplotlib.image Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers).

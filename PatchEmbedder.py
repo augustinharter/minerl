@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import pickle
+from sklearn.mixture import GaussianMixture as GMM
 
 
 class PatchEmbedder():
@@ -11,25 +12,30 @@ class PatchEmbedder():
         self.patch_embed_kmeans = None
         self.patch_embed_cluster_tree_probs = None
         self.step_faktor = round(math.sqrt(self.embed_dim))
+        self.gmm : GMM = None
 
     def load_embed_tuple(self, embed_tuple_path):
         with open(embed_tuple_path, "rb") as fp:
-            self.patch_embed_kmeans, self.patch_embed_cluster_tree_probs, self.embed_dim = pickle.load(fp)
+            self.patch_embed_kmeans, self.patch_embed_cluster_tree_probs, self.embed_dim, self.gmm = pickle.load(fp)
             self.step_faktor = round(math.sqrt(self.embed_dim))
             self.n_cluster = len(self.patch_embed_cluster_tree_probs)
 
     def embed_patch(self, patchpixels):
         # CALC INDEXES
         flat_pixels = patchpixels.reshape(-1,3)
-        refactored_pixels = flat_pixels[:,0]*self.step_faktor + flat_pixels[:,1]
+        #print(flat_pixels)
 
-        # HIST EMBEDDINGS
-        #embeds = np.zeros((patches.shape[0], embed_dim))
-        #for idx in range(len(embeds)):
-        #    embed = np.histogram(refactored_patches, bins=np.linspace(0,10,embed_dim+1))[0]
-        #    embeds[idx] = embed.astype(np.float)/np.sum(embed)
-
-        embed = np.histogram(refactored_pixels, bins=np.linspace(0, self.step_faktor+1, self.embed_dim+1))[0]
+        #embed = np.histogram(refactored_pixels, bins=np.linspace(0, self.step_faktor+1, self.embed_dim+1))[0]
+        if self.gmm is None:
+            hist2d, _, _ = np.histogram2d(flat_pixels[:,1], flat_pixels[:,0], range=((0,1),(0,1)), bins=self.step_faktor)
+            #print(hist2d.shape, hist2d)
+            embed = hist2d.reshape(-1)
+            #print(embed.shape, embed)
+            #print(np.sum(embed))
+        else:
+            labels = self.gmm.predict(flat_pixels[:,:2])
+            embed = np.array([np.sum(labels==i) for i in range(self.embed_dim)])
+            
         #embed = embed/np.linalg.norm(embed)
         #print(self.step_faktor)
         #print(refactored_pixels.shape, np.sum(embed), embed)

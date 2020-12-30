@@ -1,4 +1,4 @@
-from .TrainHandler import Handler
+from TrainHandler import Handler
 import logging as L
 import os
 
@@ -18,9 +18,22 @@ class Arguments():
     clustersave = False
     staticL1 = False
     savekmeans = True
-    discounted = False
+    discounted = True
+    resnet = False
     viz = True
+    grid = False
+    dummy = False
+    clippify = False
+    final = True
+    integrated = True
+    grounded = False
 
+    embed_dim = 64
+    embed_cluster = 64
+    embed_train_samples = 100
+    datasize = 100
+    blur = 0
+    delta = 50
     cluster = "5"
     clustercritic = 0
     gray = True
@@ -32,12 +45,11 @@ class Arguments():
     saveevery = 10
     rewidx = 3
     wait = 120
-    delay = 10
+    delay = 0
     warmup = 20
     gamma = 0.95
     revgamma = 1.1
     trajsize = 50
-    datasize = 20000
     testsize = 300
     workers = (4,16,4)
     chunksize = 20
@@ -51,7 +63,11 @@ class Trainer():
         #print(args.name)
         H = Handler(args)
         H.load_data()
-        if True:
+        H.create_patch_embedding_clusters()
+        H.vis_embed()
+
+        # old
+        if False:
             if args.cluster:
                 if args.train or args.savekmeans:
                     H.cluster(mode="train")
@@ -80,9 +96,6 @@ class Trainer():
                 if not args.train:
                     H.load_models(modelnames=[H.criticname])
                 H.dream()
-        else:
-            L.exception("Exception occured:"+ str(""))
-            print("EXCEPTION")
 
 if __name__ == '__main__':
     trainer = Trainer()

@@ -12,6 +12,7 @@ import minerl
 import utils
 from mpl_toolkits.mplot3d import axes3d
 from matplotlib.colors import rgb_to_hsv, hsv_to_rgb
+from matplotlib import colors
 from matplotlib import cm
 import io
 import cv2
@@ -23,7 +24,8 @@ from PIL import Image, ImageDraw, ImageFont
 from torchvision import transforms
 import torchvision as tv
 from PatchEmbedder import PatchEmbedder
-
+from sklearn.mixture import GaussianMixture as GMM
+import copy
 
 class Handler():
     def __init__(self, args):
@@ -72,7 +74,7 @@ class Handler():
             self.font = ImageFont.truetype("./isy_minerl/segm/etc/Ubuntu-R.ttf", 9)
         else:
             self.embed_data_path = f"saves/patchembed/"
-            self.embed_data_args = f"cl{args.embed_cluster}-dim{args.embed_dim}-ds{args.embed_train_samples}"
+            self.embed_data_args = f"cl{args.embed_cluster}-dim{args.embed_dim}-ds{args.embed_train_samples}-{'grid' if args.grid else 'gmm'}"
             self.unetname = f"unet-l2_{args.L2}-l1_{args.L1}"
             self.save_path = f"./saves/Critic/"+self.arg_path
             self.font = ImageFont.truetype("/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf", 8)
@@ -678,6 +680,7 @@ class Handler():
     
     def create_patch_embedding_clusters(self):
         print("Starting to create patch embedding clusters with tree prob")
+        args = self.args
         # HYPERARAMS
         patchwid = 8
         stride = 2
@@ -702,9 +705,9 @@ class Handler():
             print("loaded navigation data:", NX.shape, NY.shape)
             
             # FUSE WITH TREE DATA
-            high_reward = self.YY[:,reward_idx]>=0.9
+            high_reward = self.Y[:,reward_idx]>=0.9
             print("high reward frames in treechop dataset:", sum(high_reward))
-            TX = self.XX[high_reward]/255
+            TX = self.X[high_reward]/255
             TY = np.ones(len(TX))
             navselection = np.random.randint(len(NX), size=n_samples)
             treeselection = np.random.randint(len(TY), size=n_samples)
@@ -734,7 +737,15 @@ class Handler():
             X = rgb_to_hsv(X/255)
             Y = np.array([1,0])
             print("using dummy dataset:", X.shape)
-            
+        
+        # FIT GMM
+        if not args.grid:
+            pixels = X.reshape(-1,3)[::10,:2]
+            print(pixels.shape)
+            gmm = GMM(n_components=embed_dim).fit(pixels)
+            self.embedder.gmm = gmm
+        else:
+            gmm = None
 
         # CREATE PATCHES
         print("creating patches...")
@@ -781,13 +792,14 @@ class Handler():
 
         os.makedirs(self.embed_data_path, exist_ok=True)
         with open(self.embed_data_path+self.embed_data_args+".pickle", "wb") as fp:
-            pickle.dump((kmeans, tree_probs, self.args.embed_dim), fp)
+            pickle.dump((kmeans, tree_probs, self.args.embed_dim, gmm), fp)
 
         print("Finished creating patch embedding clusters with tree probs")
 
     def vis_embed(self):
         # LOAD CLUSTERS AND PROBS
         embed_tuple_path = self.embed_data_path+self.embed_data_args+".pickle"
+        print(embed_tuple_path)
         if not os.path.exists(embed_tuple_path):
             print("no clusters and probs found...")
             self.create_patch_embedding_clusters()
@@ -823,6 +835,48 @@ class Handler():
             #plt.show()
             plt.imsave(resultdir+f"{idx}.png", pic)
     
+    def vis_pixels(self):
+        # GET PIXELS
+        #data = self.X[self.Y[:,3]>0.9]
+        #data = data[:,10:54,26:39]
+        data = self.X
+        #navdatadir = "./data/navigate/"
+        #with gzip.open(navdatadir+"data.pickle", 'rb') as fp:
+        #    data, NY = pickle.load(fp)
+        #print(data.shape)
+        pixels = data.reshape(-1,3)
+
+        # PLOTS SETUP
+        my_cmap = copy.copy(cm.get_cmap('plasma'))
+        my_cmap.set_bad(my_cmap.colors[0])
+        #print(cm.cmaps_listed)
+        hs_pic = np.array([[[h,s,1] for s in range(255)] for h in range(255)])
+        hs_pic = 255*hsv_to_rgb(hs_pic/255)
+        fig, (ax1, ax2, ax3) = plt.subplots(1,3, sharey=True)
+        ax1.set_aspect(1)
+        ax2.set_aspect(1)
+        ax3.set_aspect(1)
+
+        ax2.imshow(hs_pic)
+        ax2.invert_yaxis()
+        ax1.hist2d(pixels[:,0], pixels[:,1], bins=100, norm=colors.LogNorm(), cmap=my_cmap)
+        #plt.gca().set_aspect('equal', adjustable='box')
+
+        #plt.show()
+        X = pixels[::200,:2]
+        print(X.shape)
+        comps = 100
+        gmm = GMM(n_components=comps)
+        labels = gmm.fit_predict(X)
+        pixperlabel = [np.sum(labels==i)/len(labels) for i in range(comps)]
+        normed_ppl_perpix = (pixperlabel/max(pixperlabel))[labels]
+        print(sorted(pixperlabel))
+        ax3.scatter(X[:, 0], X[:, 1], c=labels, s=0.5, cmap='jet')
+        ax3.set_xlim(0,255)
+        ax3.set_ylim(0,255)
+        plt.tight_layout()
+        plt.show()
+
     def collect_split_dataset(self, path, size=2000, wait=10, test=0, datadir="./results/stuff/"):
         args = self.args
         os.makedirs(datadir+"samples/", exist_ok=True)
@@ -951,6 +1005,7 @@ class Handler():
             pickle.dump((X, Y), fp)
 
     def collect_discounted_dataset(self, path, size=2000, datadir="./results/stuff/", test=0):
+        args = self.args
         os.makedirs(datadir+"samples/", exist_ok=True)
         os.environ["MINERL_DATA_ROOT"] = "./data"
         #minerl.data.download("./data", experiment='MineRLTreechopVectorObf-v0')
@@ -988,7 +1043,7 @@ class Handler():
             deltas = chops[1:]-chops[:-1]
             big_enough_delta = deltas>50
             chops = np.concatenate((chops[None,0], chops[1:][big_enough_delta]))
-            print(chops)
+            #print(chops)
 
             # INIT EPISODE SET
             approaches = []
@@ -1227,6 +1282,7 @@ if __name__ == "__main__":
     parser.add_argument("-clippify", action="store_true")
     parser.add_argument("-debug", action="store_true")
     parser.add_argument("-dummy", action="store_true")
+    parser.add_argument("-grid", action="store_true")
     #parser.add_argument("-vizdataset", action="store_true")
     
     parser.add_argument("--blur", type=int, default=0)
@@ -1262,12 +1318,13 @@ if __name__ == "__main__":
 
     H = Handler(args)
     H.load_data()
+    #H.vis_pixels()
+    H.create_patch_embedding_clusters()
+    H.vis_embed()
 
     if args.debug:
         #H.patch_embedding([])
-        #H.create_patch_embedding_clusters()
         pass
-    H.vis_embed()
     try:
         if args.cluster:
             if args.train or args.savekmeans:
