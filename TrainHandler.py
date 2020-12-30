@@ -12,6 +12,7 @@ import minerl
 import utils
 from mpl_toolkits.mplot3d import axes3d
 from matplotlib.colors import rgb_to_hsv, hsv_to_rgb
+from matplotlib import colors
 from matplotlib import cm
 import io
 import cv2
@@ -23,7 +24,8 @@ from PIL import Image, ImageDraw, ImageFont
 from torchvision import transforms
 import torchvision as tv
 from PatchEmbedder import PatchEmbedder
-
+from sklearn.mixture import GaussianMixture as GMM
+import copy
 
 class Handler():
     def __init__(self, args):
@@ -63,7 +65,7 @@ class Handler():
         else:
             self.result_path = f"./results/Critic/"+ args.name+ "-"+ self.arg_path
         print("viz path:", self.result_path)
-        
+
         if args.final or args.integrated:
             self.unetname = f"unet"
             self.embed_data_path = f"./train/"
@@ -72,7 +74,8 @@ class Handler():
             self.font = ImageFont.truetype("./isy_minerl/segm/etc/Ubuntu-R.ttf", 9)
         else:
             self.embed_data_path = f"saves/patchembed/"
-            self.embed_data_args = f"cl{args.embed_cluster}-dim{args.embed_dim}-ds{args.embed_train_samples}"
+            self.embed_data_args = f"cl{args.embed_cluster}-dim{args.embed_dim}-ds{args.embed_train_samples}-" \
+                                   + f"dl{args.delay}-th{args.embed_pos_threshold}"
             self.unetname = f"unet-l2_{args.L2}-l1_{args.L1}"
             self.save_path = f"./saves/Critic/"+self.arg_path
             self.font = ImageFont.truetype("/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf", 8)
@@ -80,7 +83,7 @@ class Handler():
         self.models[self.criticname] = self.critic
         self.models[self.unetname] = self.unet
 
-        
+
         L.basicConfig(filename=f'./logs/{args.name}.log', format='%(asctime)s %(levelname)s %(name)s %(message)s', level=L.INFO)
 
     def load_data(self, batch_size = 64):
@@ -91,7 +94,7 @@ class Handler():
         data_path = self.data_path
         file_name = "data.pickle"
         data_collector = self.collect_discounted_dataset if self.args.discounted else self.collect_split_dataset
-        
+
         if args.blur:
             #blur = nn.AvgPool2d(args.blur, 1, 1)
             if args.blur==3:
@@ -113,7 +116,7 @@ class Handler():
             print("collecting test set...")
             os.makedirs(data_path, exist_ok=True)
             data_collector(testfilename, size=test_size, datadir=data_path, test=10)
-        
+
         if args.clippify:
             utils.data_set_to_vid(testfilename, HSV=args.color=="HSV")
 
@@ -125,7 +128,7 @@ class Handler():
                self.X = blur(T.from_numpy(self.X).float()).numpy().astype(np.uint8)
                self.X = np.swapaxes(self.X, 1,-1)
                print(self.X.shape)
-               
+
         self.dataloader = T.utils.data.DataLoader(T.utils.data.TensorDataset(T.from_numpy(self.X), T.from_numpy(self.Y), T.arange(self.X.shape[0], dtype=T.uint8)), batch_size=batch_size, shuffle=True)
         self.trainsize = self.X.shape[0]
         print(f"loaded train set with {len(self.X)}")
@@ -166,10 +169,10 @@ class Handler():
         if args.clustercritic:
             with gzip.open(self.data_path+f"{mode}-{str(self.args.clustercritic)}-cluster", 'rb') as fp:
                 channels = pickle.load(fp)
-                
+
 
         # Setup save path and Logger
-        result_path = self.result_path+"critic/"+mode+"/" 
+        result_path = self.result_path+"critic/"+mode+"/"
         os.makedirs(result_path, exist_ok=True)
         log_file = open(result_path+"log.txt", "w")
         log_file.write(f"{self.args}\n\n")
@@ -195,7 +198,7 @@ class Handler():
                 #print(X.shape, Y.shape, Y)
 
                 if not args.clustercritic:
-                    pred = critic(XP).squeeze() 
+                    pred = critic(XP).squeeze()
                 else:
                     CHS = T.from_numpy(channels[I]).float().to(self.device)
                     XPE = T.cat((XP,CHS), dim=1)
@@ -244,20 +247,20 @@ class Handler():
 
                     #plt.imsave(result_path+f"e{epoch}_b{b_idx}.png", viz)
                     img.save(result_path+f"e{epoch}_b{b_idx}.png")
-            
+
             if epoch and not epoch%args.saveevery:
                 self.save_models(modelnames=[self.criticname])
-            
+
             if trainf:
                 #critic.sched.step()
                 pass
- 
+
         print()
 
     def dream(self):
         args = self.args
         # Setup save path and Logger
-        result_path = self.result_path+f"dreamsteps{args.dreamsteps}"+"/" 
+        result_path = self.result_path+f"dreamsteps{args.dreamsteps}"+"/"
         os.makedirs(result_path, exist_ok=True)
         loader = self.testdataloader
         critic = self.critic
@@ -268,7 +271,7 @@ class Handler():
             # FORWARD PASS---------------------------
 
             XP = (X.permute(0,3,1,2).float().to(self.device)).requires_grad_()
-            
+
             opti = T.optim.Adam([XP], lr=0.1)
             if args.discounted:
                 Y = Y[:,args.rewidx].float().to(self.device)
@@ -308,7 +311,7 @@ class Handler():
             viz = np.concatenate(viz, axis=1)
             viz2 = hsv_to_rgb(X.numpy()/255) if self.args.color == "HSV" else X.numpy()/255
             viz2 = np.concatenate(viz2, axis=1)
-            
+
 
             viz = np.concatenate((viz,viz2,viz3), axis=0)
             img = Image.fromarray(np.uint8(255*viz))
@@ -343,18 +346,18 @@ class Handler():
                 channels = pickle.load(fp)
 
         # Setup save path and Logger
-        result_path = self.result_path+"segment/"+mode+"/" 
+        result_path = self.result_path+"segment/"+mode+"/"
         os.makedirs(result_path, exist_ok=True)
         log_file = open(result_path+"log.txt", "w")
         log_file.write(f"{self.args}\n\n")
         if trainf:
             log = []
-        
+
 
         # Epoch and Batch Loops
         for epoch in range(int(testf) or self.args.epochs):
             for b_idx, (X,Y,I) in enumerate(loader):
-                loss_string = "" 
+                loss_string = ""
                 # FORWARD PASS---------------------------
                 XP = X.permute(0,3,1,2).float().to(self.device)
                 if args.discounted:
@@ -365,7 +368,7 @@ class Handler():
                 # FILTER in A and B
                 if trainf:
                     if not args.clustercritic:
-                        pred = critic(XP).squeeze() 
+                        pred = critic(XP).squeeze()
                     else:
                         CHS = T.from_numpy(channels[I]).float().to(self.device)
                         XPE = T.cat((XP,CHS), dim=1)
@@ -435,9 +438,9 @@ class Handler():
                         loss = loss + distloss
                         loss_string = f"dist-norm: {distloss.item()   }   " + loss_string
 
-                    
+
                     mergevalue = T.sigmoid(mergevalue)
-                    loss_string = f"e{epoch} b{b_idx}  value-loss: {loss.item()}   " + loss_string 
+                    loss_string = f"e{epoch} b{b_idx}  value-loss: {loss.item()}   " + loss_string
                     print((loss_string))
                     log.append((valueloss.item(), normloss.item() if args.L1 or args.L2 else 0))
                     opti.zero_grad()
@@ -481,7 +484,7 @@ class Handler():
 
                     #plt.imsave(result_path+f"e{epoch}_b{b_idx}.png", viz)
                     img.save(result_path+f"e{epoch}_b{b_idx}.png")
-            
+
                 if testf: # VISUALIZE
                     viz1 = hsv_to_rgb(X.numpy()/255) if self.args.color == "HSV" else A.numpy()/255
                     viz1 = np.concatenate(viz1, axis=1)
@@ -507,7 +510,7 @@ class Handler():
 
             if epoch and not epoch%args.saveevery:
                 self.save_models(modelnames=[self.unetname])
-            
+
             if trainf:
                 #critic.sched.step()
                 pass
@@ -524,7 +527,7 @@ class Handler():
             plt.plot(log2, label="L2 norm")
             plt.legend()
             plt.savefig(result_path+f"loss.png")
-        print()        
+        print()
 
     def cluster(self, mode="train", test=0):
         args = self.args
@@ -542,7 +545,7 @@ class Handler():
         treemask[21:42,25:39] = 1
 
         # Setup save path and Logger
-        result_path = self.result_path+"cluster/"+mode+"/" 
+        result_path = self.result_path+"cluster/"+mode+"/"
         os.makedirs(result_path, exist_ok=True)
         log_file = open(result_path+"log.txt", "w")
         log_file.write(f"{self.args}\n\n")
@@ -583,10 +586,10 @@ class Handler():
                 vizs.append(treemaskviz)
                 text = []
                 for nc in [int(number) for number in args.cluster.split(',')]:
-                        
+
                     clusters =  KMeans(n_clusters=nc).fit(pixels)
                     labels = clusters.labels_.reshape(X.shape[:-1])
-                    
+
                     clusterlayers = []
                     clustervalues = []
                     for clidx in range(nc):
@@ -594,7 +597,7 @@ class Handler():
                         labelselect = labels==clidx
                         clusterlayers.append(labelselect)
 
-                
+
                         # determine values
                         if not args.savekmeans:
                             Ylabel = Y.numpy()
@@ -614,7 +617,7 @@ class Handler():
                                 positions = T.stack((xs,ys), dim=-1)
                                 flat_pos = positions.view(-1,2)
                                 sublabels = np.zeros((w,w))
-                                
+
                                 for li in range(nc):
                                     square_selection = labels[pi]==li
                                     flat_selection = square_selection.reshape(-1)
@@ -622,9 +625,9 @@ class Handler():
                                     sub = KMeans(n_clusters=2).fit(flat_pos[flat_selection])
                                     flat_sub_labels = sub.labels_
                                     sublabels[square_selection] = flat_sub_labels
-                                
+
                             row[pi,:,:,0] = 255 - 255 * ((labels[pi] / (nc*2)) * (1+sublabels))
-                        
+
                         row[:,:,:,1] = 255 * ((labelselect))
 
                         if b_idx <10 and args.viz: #"VISUALIZE"
@@ -675,11 +678,12 @@ class Handler():
                 print(key, cdict[key].shape)
                 with gzip.GzipFile(self.data_path+f"{mode}-{key}-cluster", 'wb') as fp:
                     pickle.dump(cdict[key], fp)
-    
+
     def create_patch_embedding_clusters(self):
         print("Starting to create patch embedding clusters with tree prob")
+        args = self.args
         # HYPERARAMS
-        patchwid = 8
+        patchwid = self.args.embed_patch_width
         stride = 2
         embed_dim = self.args.embed_dim
         n_clusters = self.args.embed_cluster
@@ -700,11 +704,11 @@ class Handler():
                 NY = NY[:,0]
                 NX = NX/255
             print("loaded navigation data:", NX.shape, NY.shape)
-            
+
             # FUSE WITH TREE DATA
-            high_reward = self.YY[:,reward_idx]>=0.9
+            high_reward = self.Y[:,reward_idx]>= self.args.embed_pos_threshold
             print("high reward frames in treechop dataset:", sum(high_reward))
-            TX = self.XX[high_reward]/255
+            TX = self.X[high_reward]/255
             TY = np.ones(len(TX))
             navselection = np.random.randint(len(NX), size=n_samples)
             treeselection = np.random.randint(len(TY), size=n_samples)
@@ -734,33 +738,47 @@ class Handler():
             X = rgb_to_hsv(X/255)
             Y = np.array([1,0])
             print("using dummy dataset:", X.shape)
-            
 
-        # CREATE PATCHES
-        print("creating patches...")
-        patches = self.embedder.make_patches(X, patchwid, stride)
-        print("patches shape and max:", patches.shape, np.max(patches))
-        
-        # VALIDATE PATCHING
-        #assert (X[0,:8,:8] == patches[0,0,0]).all()
-        #assert (X[0,:8,56:64] == patches[0,0,-1]).all()
-        #assert (X[0,-8:,-8:] == patches[0,-1,-1]).all()
+        # FIT GMM
+        if not args.grid:
+            pixels = X.reshape(-1,3)[::10,:2]
+            print("fitting pixel clusters (gmm) to pixels with shape:", pixels.shape)
+            pixel_clusters = GMM(n_components=embed_dim).fit(pixels)
+            self.embedder.pixel_clusters = pixel_clusters
+        else:
+            pixel_clusters = None
 
-        # CREATE EMBEDDINGS
-        print("creating embeddings...")
-        embeds = self.embedder.embed_patches(patches, verbose=True)
+        print("embedding the dataset...")
+        flat_embeds, pshape = self.embedder.embed_batch(X)
 
-        # CLUSTER EMBEDDING SPACE
-        print("clustering embedding space...")
-        flat_embeds = embeds.reshape(-1, embed_dim)
-        kmeans = KMeans(n_clusters=n_clusters)
-        flat_labels = kmeans.fit_predict(flat_embeds)
-        labels = flat_labels.reshape(embeds.shape[:3])
+        if False:
+            # CREATE PATCHES
+            print("creating patches...")
+            patches = self.embedder.make_patches(X, patchwid, stride)
+            print("patches shape and max:", patches.shape, np.max(patches))
+
+            # CREATE EMBEDDINGS
+            print("creating embeddings...")
+            embeds = self.embedder.embed_patches(patches, verbose=True)
+
+            # CLUSTER EMBEDDING SPACE
+            print("clustering embedding space...")
+            flat_embeds = embeds.reshape(-1, embed_dim)
+
+        # CLUSTER PATCH EMBEDS
+        skipped_embeds = flat_embeds[::5]
+        print("fitting the embedding clusters (gmm) on embeds with shape:", skipped_embeds.shape)
+        embed_clusters = GMM(n_components=n_clusters)
+        #print("fitting the embedding clusters (kmeans) on embeds with shape:", skipped_embeds.shape)
+        #embed_clusters = KMeans(n_clusters=n_clusters)
+        embed_clusters.fit(skipped_embeds)
+        flat_labels = embed_clusters.predict(flat_embeds)
+        labels = flat_labels.reshape(pshape[0:3])
 
         # CALC CLUSTER TREE PROBABILITIES
         print("calculating cluster tree probs...")
         #gt = np.ones(embeds.shape[:3])*Y[:,None,None]
-        shape = embeds.shape[:3]
+        shape = pshape[:3]
         gt = np.zeros(shape)
         xmid = shape[2]/2
         ymid = shape[1]/2
@@ -772,22 +790,27 @@ class Handler():
         for idx in range(n_clusters):
             flat_patch_selection = flat_labels == idx
             tree_probs[idx] = np.sum(flat_gt[flat_patch_selection])/np.sum(flat_patch_selection)
-        
+
 
         # SAVE CLUSTERS AND PROBS
         print("cluster probs:", tree_probs)
-        self.embedder.patch_embed_kmeans = kmeans
+        self.embedder.patch_embed_clusters = embed_clusters
         self.embedder.patch_embed_cluster_tree_probs = tree_probs
 
         os.makedirs(self.embed_data_path, exist_ok=True)
         with open(self.embed_data_path+self.embed_data_args+".pickle", "wb") as fp:
-            pickle.dump((kmeans, tree_probs, self.args.embed_dim), fp)
+            pickle.dump((embed_clusters, tree_probs, self.args.embed_dim, pixel_clusters), fp)
 
         print("Finished creating patch embedding clusters with tree probs")
 
     def vis_embed(self):
+        resultdir = f"./results/patch-embed/result-videos/"
+        result_args = f"{self.embed_data_args}"
+        os.makedirs(resultdir, exist_ok=True)
+
         # LOAD CLUSTERS AND PROBS
         embed_tuple_path = self.embed_data_path+self.embed_data_args+".pickle"
+        print(embed_tuple_path)
         if not os.path.exists(embed_tuple_path):
             print("no clusters and probs found...")
             self.create_patch_embedding_clusters()
@@ -805,31 +828,83 @@ class Handler():
         else:
             X = self.XX[:1000]/255
 
-        # MAKE PATCHES
-        patches = self.embedder.make_patches(X, 8, 2)
-        print("patches shape:",patches.shape)
+        if False:
+            # MAKE PATCHES
+            patches = self.embedder.make_patches(X, 8, 2)
+            print("patches shape:",patches.shape)
 
-        # CALC PROBS
-        probs = self.embedder.calc_tree_probs_for_patches(patches, verbose=True)
+            # CALC PROBS
+            probs = self.embedder.calc_tree_probs_for_patches(patches, verbose=True)
+            print("probs shape:", probs.shape)
+
+        print("embedding batch...", X.shape)
+        probs = self.embedder.predict_batch(X, verbose=True)
         print("probs shape:", probs.shape)
 
-        resultdir = f"./results/patch-embed/{self.embed_data_args}/"
-        os.makedirs(resultdir, exist_ok=True)
+
         rgb = hsv_to_rgb(X)
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        out = cv2.VideoWriter(resultdir + result_args + '.avi', fourcc, 20.0, (64 * 3, 64))
         for idx, frame in enumerate(probs):
+            print("visualizing results, at frame:", idx, "/", len(probs), end='\r')
             resized_frame = np.ones((64,64,3)) * cv2.resize(frame, (64,64))[:,:,None]
-            pic = np.concatenate((rgb[idx], resized_frame), axis=1)
-            #plt.imshow(pic)
-            #plt.show()
-            plt.imsave(resultdir+f"{idx}.png", pic)
-    
+            masked_rgb = rgb[idx]*resized_frame
+            pic = np.concatenate((rgb[idx], masked_rgb, resized_frame), axis=1)
+            #plt.imsave(resultdir+f"{idx}.png", pic)
+            uint8_bgr = cv2.cvtColor((255*pic).astype(np.uint8), cv2.COLOR_RGB2BGR)
+            out.write(uint8_bgr)
+        out.release()
+
+    def vis_pixels(self):
+        # GET PIXELS
+        #data = self.X[self.Y[:,3]>0.9]
+        #data = data[:,10:54,26:39]
+        data = self.X
+        #navdatadir = "./data/navigate/"
+        #with gzip.open(navdatadir+"data.pickle", 'rb') as fp:
+        #    data, NY = pickle.load(fp)
+        #print(data.shape)
+        pixels = data.reshape(-1,3)
+
+        # PLOTS SETUP
+        my_cmap = copy.copy(cm.get_cmap('plasma'))
+        my_cmap.set_bad(my_cmap.colors[0])
+        #print(cm.cmaps_listed)
+        hs_pic = np.array([[[h,s,1] for s in range(255)] for h in range(255)])
+        hs_pic = 255*hsv_to_rgb(hs_pic/255)
+        fig, (ax1, ax2, ax3) = plt.subplots(1,3, sharey=True)
+        ax1.set_aspect(1)
+        ax2.set_aspect(1)
+        ax3.set_aspect(1)
+
+        ax2.imshow(hs_pic)
+        ax2.invert_yaxis()
+        ax1.hist2d(pixels[:,0], pixels[:,1], bins=100, norm=colors.LogNorm(), cmap=my_cmap)
+        #plt.gca().set_aspect('equal', adjustable='box')
+
+        #plt.show()
+        X = pixels[::200,:2]
+        print(X.shape)
+        comps = 100
+        gmm = GMM(n_components=comps)
+        labels = gmm.fit_predict(X)
+        pixperlabel = [np.sum(labels==i)/len(labels) for i in range(comps)]
+        normed_ppl_perpix = (pixperlabel/max(pixperlabel))[labels]
+        print(sorted(pixperlabel))
+        ax3.scatter(X[:, 0], X[:, 1], c=labels, s=0.5, cmap='jet')
+        ax3.set_xlim(0,255)
+        ax3.set_ylim(0,255)
+        plt.tight_layout()
+        plt.show()
+
     def collect_split_dataset(self, path, size=2000, wait=10, test=0, datadir="./results/stuff/"):
         args = self.args
         os.makedirs(datadir+"samples/", exist_ok=True)
         # os.environ["MINERL_DATA_ROOT"] = "./data"
         if not os.path.exists(f"{os.getenv('MINERL_DATA_ROOT', 'data/')}/MineRLTreechopVectorObf-v0"):
             minerl.data.download(os.getenv('MINERL_DATA_ROOT', 'data/'), experiment='MineRLTreechopVectorObf-v0')
-        data = minerl.data.make('MineRLTreechopVectorObf-v0', data_dir=os.getenv('MINERL_DATA_ROOT', 'data/'), num_workers=args.workers[0], worker_batch_size=args.workers[1])
+        data = minerl.data.make('MineRLTreechopVectorObf-v0', data_dir=os.getenv('MINERL_DATA_ROOT', 'data/'),
+                                num_workers=args.workers[0], worker_batch_size=args.workers[1])
         X = []
         Y = []
         cons = self.args.cons
@@ -839,7 +914,8 @@ class Handler():
         chunksize = self.args.chunksize
 
         print("collecting data set with", size, "frames")
-        for b_idx, (state, act, rew, next_state, done) in enumerate(data.batch_iter(test or 10, 2*wait if not test else size, preload_buffer_size=args.workers[2])):
+        for b_idx, (state, act, rew, next_state, done) in enumerate(data.batch_iter(test or 10,
+                                                2*wait if not test else size, preload_buffer_size=args.workers[2])):
             print("at batch", b_idx, end='\r')
             #vector = state['vector']
 
@@ -863,16 +939,18 @@ class Handler():
                     approaches.extend(pov[rowidx,warmup:warmup+chunksize])
                     rewards.extend([1]*chunksize)
                     approaches.extend(pov[rowidx,tidx-chunksize+1-delay:tidx+1-delay])
-                    
+
                     if len(X)<500: # SAVE IMG
                         effchsize = chunksize*2
                         for chunkidx in range(effchsize):
                             img = Image.fromarray(np.uint8(255*hsv_to_rgb(approaches[chopidx*effchsize+chunkidx]/255)))
                             #draw = ImageDraw.Draw(img)
                             #x, y = 0, 0
-                            #draw.text((x, y), "\n".join([str(round(entry,3)) for entry in rewtuple]), fill= (255,255,255), font=self.font)
-                            img.save(datadir+"samples/"+f"{b_idx}-{chopidx}-{chunkidx}-{'A' if rewards[chopidx*effchsize+chunkidx] else 'B'}.png")
-                                
+                            #draw.text((x, y), "\n".join([str(round(entry,3))
+                            # for entry in rewtuple]), fill= (255,255,255), font=self.font)
+                            img.save(datadir+"samples/"+f"{b_idx}-{chopidx}-{chunkidx}-"+
+                                                        f"{'A' if rewards[chopidx*effchsize+chunkidx] else 'B'}.png")
+
             if approaches:
                 X.extend(approaches)
                 Y.extend(rewards)
@@ -898,9 +976,9 @@ class Handler():
         os.environ["MINERL_DATA_ROOT"] = "./data"
         minerl.data.download("./data", experiment='MineRLNavigateVectorObf-v0')
         #data = minerl.data.make('MineRLTreechopVectorObf-v0')
-        data = minerl.data.make('MineRLNavigateVectorObf-v0', 
-            data_dir=os.getenv('MINERL_DATA_ROOT', 'data/'), 
-            num_workers=args.workers[0], 
+        data = minerl.data.make('MineRLNavigateVectorObf-v0',
+            data_dir=os.getenv('MINERL_DATA_ROOT', 'data/'),
+            num_workers=args.workers[0],
             worker_batch_size=args.workers[1])
         names = data.get_trajectory_names()
 
@@ -932,9 +1010,10 @@ class Handler():
                         #print(rewards)
                         rewtuple = (0,)
                         x, y = 0, 0
-                        draw.text((x, y), "\n".join([str(round(entry,3)) for entry in rewtuple]), fill= (255,255,255), font=self.font)
+                        draw.text((x, y), "\n".join([str(round(entry,3)) for entry in rewtuple]),
+                                  fill= (255,255,255), font=self.font)
                         img.save(datadir+"samples/"+f"{name}-{chidx}-{fi}.png")
-            
+
             episode_chunks = []
             for chunk in selections:
                 episode_chunks.extend(chunk)
@@ -951,15 +1030,16 @@ class Handler():
             pickle.dump((X, Y), fp)
 
     def collect_discounted_dataset(self, path, size=2000, datadir="./results/stuff/", test=0):
+        args = self.args
         os.makedirs(datadir+"samples/", exist_ok=True)
         os.environ["MINERL_DATA_ROOT"] = "./data"
         #minerl.data.download("./data", experiment='MineRLTreechopVectorObf-v0')
         #data = minerl.data.make('MineRLTreechopVectorObf-v0')
-        data = minerl.data.make('MineRLTreechopVectorObf-v0', 
-            data_dir=os.getenv('MINERL_DATA_ROOT', 'data/'), 
-            num_workers=args.workers[0], 
+        data = minerl.data.make('MineRLTreechopVectorObf-v0',
+            data_dir=os.getenv('MINERL_DATA_ROOT', 'data/'),
+            num_workers=args.workers[0],
             worker_batch_size=args.workers[1])
-        names = data.get_trajectory_names() 
+        names = data.get_trajectory_names()
         X = []
         Y = []
         cons = self.args.cons
@@ -973,7 +1053,8 @@ class Handler():
             size = size*test
 
         print("collecting data set with", size, "frames")
-        #for b_idx, (state, act, reward, next_state, done) in enumerate(data.batch_iter(test or 10, cons if not test else testsize, preload_buffer_size=args.workers[2])):
+        #for b_idx, (state, act, reward, next_state, done) in
+        # enumerate(data.batch_iter(test or 10, cons if not test else testsize, preload_buffer_size=args.workers[2])):
         for fridx, name in enumerate(names):
             # EXTRACT EPISODE
             state, action, reward, state_next, done = zip(*data.load_data(name))
@@ -988,7 +1069,7 @@ class Handler():
             deltas = chops[1:]-chops[:-1]
             big_enough_delta = deltas>50
             chops = np.concatenate((chops[None,0], chops[1:][big_enough_delta]))
-            print(chops)
+            #print(chops)
 
             # INIT EPISODE SET
             approaches = []
@@ -1060,14 +1141,15 @@ class Handler():
                     #print(rewards)
                     rewtuple = rewards[fi]
                     x, y = 0, 0
-                    draw.text((x, y), "\n".join([str(round(entry,3)) for entry in rewtuple]), fill= (255,255,255), font=self.font)
+                    draw.text((x, y), "\n".join([str(round(entry,3)) for entry in rewtuple]),
+                              fill= (255,255,255), font=self.font)
                     img.save(datadir+"samples/"+f"{name}-{fi}.png")
-            
+
             # EXTEND FULL DATA SET
             if approaches:
                 X.extend(approaches)
                 Y.extend(rewards)
-            
+
             # QUIT IF SIZE REACHED
             if len(X) >= size:
                 X = X[:size]
@@ -1087,9 +1169,9 @@ class Handler():
         os.environ["MINERL_DATA_ROOT"] = "./data"
         #minerl.data.download("./data", experiment='MineRLTreechopVectorObf-v0')
         #data = minerl.data.make('MineRLTreechopVectorObf-v0')
-        data = minerl.data.make('MineRLTreechopVectorObf-v0', 
-            data_dir=os.getenv('MINERL_DATA_ROOT', 'data/'), 
-            num_workers=args.workers[0], 
+        data = minerl.data.make('MineRLTreechopVectorObf-v0',
+            data_dir=os.getenv('MINERL_DATA_ROOT', 'data/'),
+            num_workers=args.workers[0],
             worker_batch_size=args.workers[1])
         X = []
         Y = []
@@ -1182,7 +1264,8 @@ class Handler():
                     #print(rewards)
                     rewtuple = rewards[fi]
                     x, y = 0, 0
-                    draw.text((x, y), "\n".join([str(round(entry,3)) for entry in rewtuple]), fill= (255,255,255), font=self.font)
+                    draw.text((x, y), "\n".join([str(round(entry,3)) for entry in rewtuple]),
+                              fill= (255,255,255), font=self.font)
                     img.save(datadir+"samples/"+f"{b_idx}-{fi}.png")
 
             #print(approaches)
@@ -1217,7 +1300,7 @@ if __name__ == "__main__":
     parser.add_argument("-uload", action="store_true")
     parser.add_argument("-cload", action="store_true")
     parser.add_argument("-dream", action="store_true")
-    parser.add_argument("-discounted", action="store_true")
+    parser.add_argument("-discounted", type=bool, default=True)
     parser.add_argument("-sigmoid", action="store_true")
     parser.add_argument("-clustersave", action="store_true")
     parser.add_argument("-staticL1", action="store_true")
@@ -1227,6 +1310,7 @@ if __name__ == "__main__":
     parser.add_argument("-clippify", action="store_true")
     parser.add_argument("-debug", action="store_true")
     parser.add_argument("-dummy", action="store_true")
+    parser.add_argument("-grid", action="store_true")
     #parser.add_argument("-vizdataset", action="store_true")
     
     parser.add_argument("--blur", type=int, default=0)
@@ -1253,7 +1337,9 @@ if __name__ == "__main__":
     parser.add_argument("--cons", type=int, default=250)
     parser.add_argument("--embed-dim", type=int, default=100)
     parser.add_argument("--embed-cluster", type=int, default=10)
-    parser.add_argument("--embed-train-samples", type=int, default=300)
+    parser.add_argument("--embed-train-samples", type=int, default=1000)
+    parser.add_argument("--embed-patch-width", type=int, default=8)
+    parser.add_argument("--embed-pos-threshold", type=float, default=0.9)
     parser.add_argument("--color", type=str, default="HSV")
     parser.add_argument("--name", type=str, default="default")
     args = parser.parse_args()
@@ -1262,12 +1348,21 @@ if __name__ == "__main__":
 
     H = Handler(args)
     H.load_data()
+    #H.vis_pixels()
+    try:
+        H.create_patch_embedding_clusters()
+    except Exception as e:
+        print("ERROR", e)
+        resultdir = f"./results/patch-embed/"
+        result_args = f"{H.embed_data_args}"
+        os.makedirs(resultdir, exist_ok=True)
+        with open(resultdir + result_args + "-fail.txt", 'w') as fp:
+            fp.write(str(e))
+    H.vis_embed()
 
     if args.debug:
         #H.patch_embedding([])
-        #H.create_patch_embedding_clusters()
         pass
-    H.vis_embed()
     try:
         if args.cluster:
             if args.train or args.savekmeans:
@@ -1302,4 +1397,3 @@ if __name__ == "__main__":
         L.exception("Exception occured:"+ str(e))
         print("EXCEPTION")
         print(e)
-    exit(0)
