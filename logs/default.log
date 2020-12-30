@@ -5875,3 +5875,10 @@ AttributeError: 'Namespace' object has no attribute 'viz'
 2020-12-22 13:30:47,119 WARNING matplotlib.image Clipping input data to the valid range for imshow with RGB data ([0..1] for floats or [0..255] for integers).
 2020-12-22 15:58:35,043 INFO minerl.data.download Downloading experiment MineRLNavigateVectorObf-v0 to ./data
 2020-12-22 15:58:35,047 WARNING minerl.data.download ./data/MineRLNavigateVectorObf-v0 exists - skipping re-download!
+2020-12-26 11:55:08,354 INFO minerl.data.download Downloading experiment MineRLNavigateVectorObf-v0 to ./data
+2020-12-26 11:55:08,357 INFO minerl.data.download Fetching download hash ...
+2020-12-26 11:55:08,357 WARNING minerl.data.download As of MineRL 0.3.0 automatic hash checking has been disabled.
+2020-12-26 11:55:08,357 INFO minerl.data.download Starting download ...
+2020-12-26 11:56:12,224 INFO root Success - downloaded ./data/download/v3/MineRLNavigateVectorObf-v0.tar
+2020-12-26 11:56:12,225 INFO root Extracting downloaded files - this may take some time
+2020-12-26 11:56:41,738 INFO root Success - extracted files to ./data
