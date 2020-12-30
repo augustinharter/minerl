@@ -101,10 +101,12 @@ class PatchEmbedTreeDetector():
         X = X/255.0
         size = X.shape[1:3]
         X = rgb_to_hsv(X)
-        patches = self.embedder.make_patches(X, 8, 2)
+
 
         # CALC PROBS
-        probs = self.embedder.calc_tree_probs_for_patches(patches)
+        #patches = self.embedder.make_patches(X, 8, 2)
+        #probs = self.embedder.calc_tree_probs_for_patches(patches)
+        probs = self.embedder.predict_batch(X)
         return cv2.resize(probs[0], size)
 
     def get_tree_locations(self, X):
@@ -158,15 +160,16 @@ if __name__ == '__main__':
                 break
 
             RGB = cv2.cvtColor(BGR, cv2.COLOR_BGR2RGB)
-            print("at frame", frameidx)
+            print("at frame", frameidx, end='\r')
             frameidx += 1
 
             # GENERATE SEGMENTATION FOR RGB FRAMES
             mask, centers, centersizes = detector.get_tree_locations(RGB)
             #print(centers[1], centersizes[1])
-            if len(centers>=2):
+            if len(centers)>=2:
+                #print(centers.shape)
                 nav_point = np.round(centers[1]).astype(int)
-                print(nav_point)
+                #print(nav_point)
                 BGR[nav_point[1], nav_point[0]] = 1
                 
             #mask = mask.cpu().numpy()
