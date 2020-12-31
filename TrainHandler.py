@@ -689,8 +689,10 @@ class Handler():
         n_clusters = self.args.embed_cluster
         reward_idx = 4
         n_samples = self.args.embed_train_samples
+        channels = [0,1] if not args.hue else [0]
 
-        self.embedder = PatchEmbedder(embed_dim=embed_dim, n_cluster=n_clusters)
+        self.embedder = PatchEmbedder(embed_dim=embed_dim, n_cluster=n_clusters,
+                                      channels=channels, pw=patchwid, stride=stride)
 
         # REAL DATASET
         if not args.dummy:
@@ -739,14 +741,11 @@ class Handler():
             Y = np.array([1,0])
             print("using dummy dataset:", X.shape)
 
-        # FIT GMM
-        if not args.grid:
-            pixels = X.reshape(-1,3)[::10,:2]
-            print("fitting pixel clusters (gmm) to pixels with shape:", pixels.shape)
-            pixel_clusters = GMM(n_components=embed_dim).fit(pixels)
-            self.embedder.pixel_clusters = pixel_clusters
-        else:
-            pixel_clusters = None
+        # PIXEL CLUSTERS
+        pixels = X.reshape(-1,3)[::10,channels]
+        print("fitting pixel clusters (gmm) to pixels with shape:", pixels.shape)
+        pixel_clusters = GMM(n_components=embed_dim).fit(pixels)
+        self.embedder.pixel_clusters = pixel_clusters
 
         print("embedding the dataset...")
         flat_embeds, pshape = self.embedder.embed_batch(X)
@@ -816,7 +815,9 @@ class Handler():
             self.create_patch_embedding_clusters()
         else:
             print("found clusters and probs...")
-            self.embedder = PatchEmbedder(self.args.embed_dim, self.args.embed_cluster)
+            self.embedder = PatchEmbedder(self.args.embed_dim, self.args.embed_cluster,
+                                          pw=self.args.embed_patch_width,
+                                          channels = [0] if self.args.hue else [0,1])
             self.embedder.load_embed_tuple(embed_tuple_path)
 
         # GET DATA
@@ -1312,8 +1313,9 @@ if __name__ == "__main__":
     parser.add_argument("-debug", action="store_true")
     parser.add_argument("-dummy", action="store_true")
     parser.add_argument("-grid", action="store_true")
+    parser.add_argument("-hue", action="store_true")
     #parser.add_argument("-vizdataset", action="store_true")
-    
+
     parser.add_argument("--blur", type=int, default=0)
     parser.add_argument("--cluster", type=str, default="")
     parser.add_argument("--clustercritic", type=int, default=0)
