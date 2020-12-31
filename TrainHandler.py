@@ -75,7 +75,7 @@ class Handler():
         else:
             self.embed_data_path = f"saves/patchembed/"
             self.embed_data_args = f"cl{args.embed_cluster}-dim{args.embed_dim}-ds{args.embed_train_samples}-" \
-                                   + f"dl{args.delay}-th{args.embed_pos_threshold}"
+                                   + f"dl{args.delay}-th{args.embed_pos_threshold}-pw{args.embed_patch_width}"
             self.unetname = f"unet-l2_{args.L2}-l1_{args.L1}"
             self.save_path = f"./saves/Critic/"+self.arg_path
             self.font = ImageFont.truetype("/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf", 8)
@@ -804,7 +804,7 @@ class Handler():
         print("Finished creating patch embedding clusters with tree probs")
 
     def vis_embed(self):
-        resultdir = f"./results/patch-embed/result-videos/"
+        resultdir = f"./results/patch-embed/result-videos-2/"
         result_args = f"{self.embed_data_args}"
         os.makedirs(resultdir, exist_ok=True)
 
@@ -1351,6 +1351,7 @@ if __name__ == "__main__":
     #H.vis_pixels()
     try:
         H.create_patch_embedding_clusters()
+        H.vis_embed()
     except Exception as e:
         print("ERROR", e)
         resultdir = f"./results/patch-embed/"
@@ -1358,7 +1359,6 @@ if __name__ == "__main__":
         os.makedirs(resultdir, exist_ok=True)
         with open(resultdir + result_args + "-fail.txt", 'w') as fp:
             fp.write(str(e))
-    H.vis_embed()
 
     if args.debug:
         #H.patch_embedding([])
