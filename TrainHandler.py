@@ -767,10 +767,10 @@ class Handler():
 
         # CLUSTER PATCH EMBEDS
         skipped_embeds = flat_embeds[::5]
-        print("fitting the embedding clusters (gmm) on embeds with shape:", skipped_embeds.shape)
-        embed_clusters = GMM(n_components=n_clusters)
-        #print("fitting the embedding clusters (kmeans) on embeds with shape:", skipped_embeds.shape)
-        #embed_clusters = KMeans(n_clusters=n_clusters)
+        #print("fitting the embedding clusters (gmm) on embeds with shape:", skipped_embeds.shape)
+        #embed_clusters = GMM(n_components=n_clusters)
+        print("fitting the embedding clusters (kmeans) on embeds with shape:", skipped_embeds.shape)
+        embed_clusters = KMeans(n_clusters=n_clusters)
         embed_clusters.fit(skipped_embeds)
         flat_labels = embed_clusters.predict(flat_embeds)
         labels = flat_labels.reshape(pshape[0:3])
