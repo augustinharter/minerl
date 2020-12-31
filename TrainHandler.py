@@ -1351,6 +1351,7 @@ if __name__ == "__main__":
     #H.vis_pixels()
     try:
         H.create_patch_embedding_clusters()
+        H.vis_embed()
     except Exception as e:
         print("ERROR", e)
         resultdir = f"./results/patch-embed/"
@@ -1358,7 +1359,6 @@ if __name__ == "__main__":
         os.makedirs(resultdir, exist_ok=True)
         with open(resultdir + result_args + "-fail.txt", 'w') as fp:
             fp.write(str(e))
-    H.vis_embed()
 
     if args.debug:
         #H.patch_embedding([])
