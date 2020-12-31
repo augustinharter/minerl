@@ -5,7 +5,7 @@ from sklearn.mixture import GaussianMixture as GMM
 
 
 class PatchEmbedder():
-    def __init__(self, embed_dim=100, n_cluster=100, pw=8, stride=2):
+    def __init__(self, embed_dim=100, n_cluster=100, pw=8, stride=2, channels=[0,1]):
         super().__init__()
         self.embed_dim = embed_dim
         self.n_cluster = n_cluster
@@ -15,6 +15,7 @@ class PatchEmbedder():
         self.pixel_clusters : GMM = None
         self.w = pw
         self.s = stride
+        self.channels = channels
 
     def load_embed_tuple(self, embed_tuple_path):
         with open(embed_tuple_path, "rb") as fp:
@@ -110,7 +111,7 @@ class PatchEmbedder():
         # SHAPING
         bshape = batch.shape
         flat_batch = batch.reshape(-1, 3)
-        flat_hs = flat_batch[:, :2]
+        flat_hs = flat_batch[:, self.channels]
 
         # PIXEL EMBEDS (BATCHED)
         if verbose:
