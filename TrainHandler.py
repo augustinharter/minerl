@@ -844,12 +844,13 @@ class Handler():
 
         rgb = hsv_to_rgb(X)
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        out = cv2.VideoWriter(resultdir + result_args + '.avi', fourcc, 20.0, (64 * 3, 64))
+        out = cv2.VideoWriter(resultdir + result_args + '.avi', fourcc, 20.0, (64 * 4, 64))
         for idx, frame in enumerate(probs):
             print("visualizing results, at frame:", idx, "/", len(probs), end='\r')
             resized_frame = np.ones((64,64,3)) * cv2.resize(frame, (64,64))[:,:,None]
+            clean_mask = resized_frame>0.7
             masked_rgb = rgb[idx]*resized_frame
-            pic = np.concatenate((rgb[idx], masked_rgb, resized_frame), axis=1)
+            pic = np.concatenate((rgb[idx], masked_rgb, resized_frame, clean_mask), axis=1)
             #plt.imsave(resultdir+f"{idx}.png", pic)
             uint8_bgr = cv2.cvtColor((255*pic).astype(np.uint8), cv2.COLOR_RGB2BGR)
             out.write(uint8_bgr)
